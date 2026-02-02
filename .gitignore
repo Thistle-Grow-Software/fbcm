@@ -3,6 +3,7 @@ venv/
 *.pyc
 __pycache__/
 docs/_build
+dist/
 
 .ignore
 
