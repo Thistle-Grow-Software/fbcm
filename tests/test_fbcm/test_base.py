@@ -203,7 +203,7 @@ class TestBaseDownloader:
         bd = BaseDownloader(add_yt_opts={"merge_output_format": "mkv"})
         assert bd.base_yt_opts["merge_output_format"] == "mkv"
 
-    @patch("fbcm.base.YoutubeDL")
+    @patch("yt_dlp.YoutubeDL")
     def test_download_from_file(self, mock_ytdl_class, tmp_path):
         # TODO: Make the mocking cleaner
         d = tmp_path / "base_downloader"
@@ -247,7 +247,7 @@ class TestFileOperationsUtil:
         result = fops._construct_mp4_title(file_stem=example_file_stem)
         assert result == "2005 Wk21SBXL - Pittsburgh vs Seattle"
 
-    @patch("fbcm.base.MP4")
+    @patch("mutagen.mp4.MP4")
     def test_save_is_called_when_not_pretending(self, mock_MP4_class, tmp_path):
         d = tmp_path / self.__class__.__name__
 
@@ -260,7 +260,7 @@ class TestFileOperationsUtil:
 
         mock_MP4_instance.save.assert_called_once()
 
-    @patch("fbcm.base.MP4")
+    @patch("mutagen.mp4.MP4")
     def test_save_is_not_called_when_pretending(self, mock_MP4_class, tmp_path):
         d = tmp_path / self.__class__.__name__
         fops = FileOperationsUtil(directory_path=d, pretend=True)

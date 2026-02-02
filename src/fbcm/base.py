@@ -4,10 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import ffmpeg
-from mutagen.mp4 import MP4
-from yt_dlp import YoutubeDL
-
 from .constants import ABBREVIATION_MAP, CONCURRENT_FRAGMENTS, THROTTLED_RATE_LIMIT
 
 
@@ -346,6 +342,8 @@ class BaseDownloader:
         if dlp_overrides:
             overridden_opts.update(dlp_overrides)
 
+        from yt_dlp import YoutubeDL
+
         with YoutubeDL(params=overridden_opts) as ydl:
             ydl.download(urls)
 
@@ -436,6 +434,8 @@ class FileOperationsUtil:
 
         print(f"Working on {file_obj.name}")
 
+        from mutagen.mp4 import MP4
+
         try:
             audio = MP4(file_obj)
             audio["\xa9nam"] = self._construct_mp4_title(file_stem=file_obj.stem)
@@ -473,6 +473,8 @@ class FileOperationsUtil:
         :return: List of file names (stem only) that were successfully converted.
         :rtype: List[str]
         """
+
+        import ffmpeg
 
         successfully_converted = []
         for mkv_file in self.directory_path.rglob(f"*.{orig_format}"):

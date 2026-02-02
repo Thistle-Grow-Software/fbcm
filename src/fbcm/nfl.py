@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from griddy.nfl import GriddyNFL
-from griddy.nfl.models import WeeklyGameDetail
 from yt_dlp import YoutubeDL
+
+if TYPE_CHECKING:
+    from griddy.nfl.models import WeeklyGameDetail
 
 # noinspection PyUnresolvedReferences
 from yt_dlp.extractor.nfl import NFLBaseIE
@@ -186,6 +189,8 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
             and apply to all download invocations by this object.
         :type add_yt_opts: Dict | None
         """
+        from griddy.nfl import GriddyNFL
+
         super().__init__(firefox_profile_path, destination_dir, add_yt_opts)
         self._replay_base_url = "https://www.nfl.com/plus/games/"
 
