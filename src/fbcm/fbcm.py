@@ -8,20 +8,9 @@ from random import uniform
 from typing import Tuple
 
 import click
-from playwright._impl._errors import TargetClosedError, TimeoutError
-from playwright.sync_api import sync_playwright
 
-from .base import (
-    BaseDownloader,
-    FileOperationsUtil,
-    MetaDataCreator,
-)
 from .constants import DEFAULT_REPLAY_TYPES, OUTPUT_FORMATS, POSITIONS, TEAM_FULL_NAMES
-from .models import ProspectDataSoup
-from .draft_buzz import DraftBuzzScraper, ProspectProfileListExtractor, ProspectParserSoup
-from .nfl import NFLShowDownloader, NFLWeeklyDownloader
 from .utils import apply_config_to_kwargs, find_config, load_config
-from .docx.word_gen import WordDocGenerator
 
 
 @click.group()
@@ -59,6 +48,8 @@ def download_list(ctx, input_file, output_directory, cookies_file: Path = None):
 
     INPUT_FILE is the path to a text file where video URLs are listed, one per line.
     """
+    from .base import BaseDownloader
+
     config = ctx.obj.get("config", {})
     kwargs = {"cookies_file": cookies_file, "output_directory": output_directory}
     kwargs = apply_config_to_kwargs(config, "download_list", kwargs)
@@ -92,6 +83,8 @@ def nfl_show(ctx, input_file, output_directory, cookies_file):
 
     INPUT_FILE is a JSON file containing the URL leaf nfl.com uses for each episode.
     """
+    from .nfl import NFLShowDownloader
+
     config = ctx.obj.get("config", {})
     kwargs = {"cookies_file": cookies_file, "output_directory": output_directory}
     kwargs = apply_config_to_kwargs(config, "nfl_show", kwargs)
@@ -188,6 +181,8 @@ def nfl_games(
     SEASON Is the year (2009 or later) for which to download replays.
     WEEK The season week number to download replays for.
     """
+    from .nfl import NFLWeeklyDownloader
+
     config = ctx.obj.get("config", {})
 
     # Build kwargs, converting tuples to lists for config merging
@@ -328,6 +323,11 @@ def extract_draft_profiles(
     position: str,
     input_file: str,
 ):
+    from playwright._impl._errors import TimeoutError
+    from playwright.sync_api import sync_playwright
+
+    from .draft_buzz import DraftBuzzScraper
+
     selected_positions = list(position)
     if not selected_positions:
         print("No positions selected. Defaulting to all.")
@@ -405,6 +405,9 @@ def gen_prospect_word_docs(
     output_directory: str,
     position: str,
 ):
+    from .docx.word_gen import WordDocGenerator
+    from .models import ProspectDataSoup
+
     selected_positions = list(position)
     if not selected_positions:
         click.echo("No positions selected. Defaulting to all.")
@@ -441,6 +444,11 @@ def gen_prospect_word_docs(
 @cli.command()
 @click.pass_context
 def update_draft_prospect_urls(ctx):
+    from playwright._impl._errors import TimeoutError
+    from playwright.sync_api import sync_playwright
+
+    from .draft_buzz import ProspectProfileListExtractor
+
     profile_lists = {}
     with sync_playwright() as playwright:
         pple = ProspectProfileListExtractor(playwright=playwright)
@@ -475,6 +483,9 @@ def dump_currently_completed(position, data, completed_list):
 @cli.command()
 @click.pass_context
 def draft_sandbox(ctx):
+    from .docx.word_gen import WordDocGenerator
+    from .models import ProspectDataSoup
+
     click.echo("Draft profile sandbox...")
 
     with open("output_data/QB.json", "r") as infile:
@@ -528,6 +539,8 @@ def convert_format(
 
     DIRECTORY is the directory fbcm will search for mkv files to convert.
     """
+    from .base import FileOperationsUtil
+
     config = ctx.obj.get("config", {})
     kwargs = {
         "orig_format": orig_format,
@@ -582,6 +595,8 @@ def generate_nfo_files(
     DATES is a JSON file mapping game numbers to the date they were played.
 
     """
+    from .base import MetaDataCreator
+
     config = ctx.obj.get("config", {})
     kwargs = {"league": league, "overwrite": overwrite}
     kwargs = apply_config_to_kwargs(config, "generate_nfo_files", kwargs)
