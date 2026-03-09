@@ -96,7 +96,7 @@ class NFLShowDownloader:
             "subtitleslangs": ["en"],
             "progress_hooks": [
                 lambda d: (
-                    logger.info("Downloading %s", d["filename"])
+                    logger.info(f"Downloading {d['filename']}")
                     if d["status"] == "downloading"
                     else None
                 )
@@ -114,9 +114,9 @@ class NFLShowDownloader:
         """
         logger.info("Downloading episodes")
         for idx, season in enumerate(self.episodes):
-            logger.info("Working on season %d", idx + 1)
+            logger.info(f"Working on season {idx + 1}")
             if idx + 1 in self.completed_seasons:
-                logger.info("Skipping Season %d", idx + 1)
+                logger.info(f"Skipping Season {idx + 1}")
                 continue
             season_directory = self.show_directory / Path(
                 "Season " + str(idx + 1).zfill(2)
@@ -135,7 +135,7 @@ class NFLShowDownloader:
                 ydl.download(completed_urls)
                 self.completed_seasons.append(idx + 1)
 
-            logger.info("Pausing for %d between seasons", self.pause_time)
+            logger.info(f"Pausing for {self.pause_time} between seasons")
             time.sleep(self.pause_time)
 
 
@@ -358,7 +358,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         :return: The stem to be used in the video file's name.
         :rtype: str
         """
-        logger.debug("Constructing file name for %s", game["slug"])
+        logger.debug(f"Constructing file name for {game['slug']}")
 
         away_city = " ".join(game["awayTeam"].split(" ")[:-1])
         home_city = " ".join(game["homeTeam"].split(" ")[:-1])
@@ -407,11 +407,11 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         :return: A list of dict objects containing only the information we need in order to download replays.
         :rtype: List[Dict]
         """
-        logger.info("Downloading %s for %d week %d", replay_types, season, week)
+        logger.info(f"Downloading {replay_types} for {season} week {week}")
         raw_games_list = self.nfl_client.games.get_weekly_game_details(
             season=season, type_="REG", week=week, include_replays=True
         )
-        logger.info("Found %d games for week %d", len(raw_games_list), week)
+        logger.info(f"Found {len(raw_games_list)} games for week {week}")
 
         if not teams:
             teams = ["all"]
@@ -436,12 +436,12 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         :type ep_num: int
         """
         for replay_type, info in game["replays"].items():
-            logger.info("Replay type: %s", replay_type)
+            logger.info(f"Replay type: {replay_type}")
             file_name = self.construct_file_name(game, replay_type, ep_num)
             outtmpl = Path(self.destination_dir, file_name)
 
             outtmpl = f"{outtmpl}.%(ext)s"
-            logger.info("Output path: %s", outtmpl)
+            logger.info(f"Output path: {outtmpl}")
             self.base_yt_opts["outtmpl"] = str(outtmpl)
 
             with YoutubeDL(self.base_yt_opts) as ydl:
@@ -492,6 +492,6 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
             ep_num = start_ep + idx + 1
 
             self.download_game(game=game, ep_num=ep_num)
-            logger.info("Downloaded %d/%d", idx + 1, len(extracted_games))
-            logger.info("Pausing for %d seconds", sleep_time)
+            logger.info(f"Downloaded {idx + 1}/{len(extracted_games)}")
+            logger.info(f"Pausing for {sleep_time} seconds")
             time.sleep(sleep_time)

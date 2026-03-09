@@ -76,9 +76,8 @@ class BrowserRetryHandler:
                     raise
                 last_error = e
                 logger.warning(
-                    "Browser/target closed (attempt %d/%d), relaunching...",
-                    attempt + 1,
-                    self.max_retries,
+                    f"Browser/target closed (attempt {attempt + 1}/{self.max_retries}), "
+                    f"relaunching..."
                 )
                 try:
                     browser.close()

@@ -301,7 +301,7 @@ def nfl_games(
             games.extend(wk_games)
 
         for game in games:
-            logger.info("%s", game)
+            logger.info(f"{game}")
 
     else:
         for wk in week:
@@ -350,7 +350,7 @@ def extract_draft_profiles(
     if not selected_positions:
         logger.info("No positions selected. Defaulting to all.")
         selected_positions = POSITIONS
-    logger.info("Position: %s", selected_positions)
+    logger.info(f"Position: {selected_positions}")
 
     with open(input_file) as infile:
         profile_urls = json.load(infile)
@@ -485,8 +485,7 @@ def update_draft_prospect_urls(ctx):
                 )
             except TimeoutError:
                 logger.warning(
-                    "Position %s timed out. Sleeping, then moving on to next position.",
-                    position,
+                    f"Position {position} timed out. Sleeping, then moving on to next position."
                 )
                 time.sleep(5)
 

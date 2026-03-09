@@ -102,7 +102,7 @@ class PageFetcher:
         self._ensure_browser_connected()
         page = self.browser.new_page()
         try:
-            logger.info("Navigating to: %s", url)
+            logger.info(f"Navigating to: {url}")
             page.goto(url=url)
             return BeautifulSoup(page.content(), "lxml")
         finally:
@@ -117,7 +117,7 @@ class PageFetcher:
 
         page = self.browser.new_page()
         try:
-            logger.info("Navigating to: %s", url)
+            logger.info(f"Navigating to: {url}")
             try:
                 page.goto(url)
             except PlaywrightTimeout:
@@ -178,7 +178,7 @@ class PageFetcher:
         self, page, image_url: str, base_url: str
     ) -> tuple[bytes | None, str]:
         """Download image from URL."""
-        logger.info("Found player image: %s...", image_url[:80])
+        logger.info(f"Found player image: {image_url[:80]}...")
         try:
             image_url = self._make_absolute_url(image_url, base_url)
             response = page.request.get(image_url)
@@ -187,12 +187,10 @@ class PageFetcher:
                 image_type = self._get_image_type(
                     response.headers.get("content-type", "")
                 )
-                logger.info(
-                    "Downloaded image: %d bytes (%s)", len(image_data), image_type
-                )
+                logger.info(f"Downloaded image: {len(image_data)} bytes ({image_type})")
                 return image_data, image_type
         except Exception as e:
-            logger.error("Failed to download image: %s", e)
+            logger.error(f"Failed to download image: {e}")
         return None, "jpeg"
 
     @staticmethod
@@ -361,7 +359,7 @@ class ProspectParserSoup:
                 table_div = soup.find(id="DBLBDL-stats")
             case _:
                 logger.warning(
-                    "Could not match position %s to any known group.", self.position
+                    f"Could not match position {self.position} to any known group."
                 )
 
         if table_div is not None:
@@ -502,16 +500,16 @@ class ProspectParserSoup:
             try:
                 season_stats[fld] = int(season_stats[fld] or 0)
             except ValueError as e:
-                logger.error("Invalid value for field %s: %s", fld, season_stats[fld])
-                logger.error("Full season_stats_dict: %s", season_stats)
+                logger.error(f"Invalid value for field {fld}: {season_stats[fld]}")
+                logger.error(f"Full season_stats_dict: {season_stats}")
                 raise e
 
         for fld in ["cmp_pct", "qb_rtg"]:
             try:
                 season_stats[fld] = float(season_stats[fld] or 0.0)
             except ValueError as e:
-                logger.error("Invalid value for field %s: %s", fld, season_stats[fld])
-                logger.error("Full season_stats_dict: %s", season_stats)
+                logger.error(f"Invalid value for field {fld}: {season_stats[fld]}")
+                logger.error(f"Full season_stats_dict: {season_stats}")
                 raise e
 
         return season_stats
@@ -862,10 +860,10 @@ class DraftBuzzScraper:
 
     def save_player_photo_to_disk(self):
         logger.info(
-            "Saving photo for %s", self.current_prospect_data.basic_info.full_name
+            f"Saving photo for {self.current_prospect_data.basic_info.full_name}"
         )
         logger.info(
-            "Fetching image from %s", self.current_prospect_data.basic_info.photo_url
+            f"Fetching image from {self.current_prospect_data.basic_info.photo_url}"
         )
 
         response = requests.get(self.current_prospect_data.basic_info.photo_url)
@@ -874,20 +872,20 @@ class DraftBuzzScraper:
 
         output_path = Path(self.profile_root_dir, "player_photos", file_name)
         output_path.write_bytes(response.content)
-        logger.info("Wrote image to disk at %s", output_path)
+        logger.info(f"Wrote image to disk at {output_path}")
 
     def print_summary(self, data: ProspectDataSoup) -> None:
         """Log summary of extracted data."""
         logger.info("Extracted data summary:")
-        logger.info("  Name: %s", data.basic_info.full_name)
-        logger.info("  Position: %s", data.basic_info.position)
-        logger.info("  School: %s", data.basic_info.college)
-        logger.info("  Rating: %s/100", data.ratings.overall_rating)
-        logger.info("  Draft Projection: %s", data.ratings.draft_projection)
-        logger.info("  Strengths: %d items", len(data.scouting_report.strengths))
-        logger.info("  Weaknesses: %d items", len(data.scouting_report.weaknesses))
+        logger.info(f"  Name: {data.basic_info.full_name}")
+        logger.info(f"  Position: {data.basic_info.position}")
+        logger.info(f"  School: {data.basic_info.college}")
+        logger.info(f"  Rating: {data.ratings.overall_rating}/100")
+        logger.info(f"  Draft Projection: {data.ratings.draft_projection}")
+        logger.info(f"  Strengths: {len(data.scouting_report.strengths)} items")
+        logger.info(f"  Weaknesses: {len(data.scouting_report.weaknesses)} items")
         logger.info(
-            "  Image: %s", "Yes" if data.basic_info.photo_path.exists() else "No"
+            f"  Image: {'Yes' if data.basic_info.photo_path.exists() else 'No'}"
         )
 
 
@@ -909,7 +907,7 @@ class ProspectProfileListExtractor:
         return self.playwright.firefox.launch(headless=False)
 
     def extract_prospect_hrefs(self, page):
-        logger.info("Extracting prospect hrefs for %s", page.url)
+        logger.info(f"Extracting prospect hrefs for {page.url}")
         rows = page.locator("#positionRankTable tbody tr")
         data_hrefs = rows.evaluate_all(
             "rows => rows.map(row => row.getAttribute('data-href'))"
