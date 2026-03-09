@@ -303,7 +303,7 @@ class TestFileOperationsUtil:
 
 @pytest.fixture(scope="session")
 def game_dates():
-    with open("tests/data/game_dates.json", "r") as infile:
+    with open("tests/data/game_dates.json") as infile:
         return json.load(infile)
 
 
@@ -335,14 +335,14 @@ class TestMetaDataCreator:
             game_stem="NFL Condensed Games - s2025e18 - 2025_Wk02_CLE_at_BAL"
         )
         assert xml_string == (
-            f"<episodedetails>\n"
-            f"\t<title>2025 Week 2 - Cleveland at Baltimore</title>\n"
-            f"\t<season>2025</season>\n"
-            f"\t<episode>18</episode>\n"
-            f"\t<aired>2025-09-14</aired>\n"
-            f"</episodedetails>"
+            "<episodedetails>\n"
+            "\t<title>2025 Week 2 - Cleveland at Baltimore</title>\n"
+            "\t<season>2025</season>\n"
+            "\t<episode>18</episode>\n"
+            "\t<aired>2025-09-14</aired>\n"
+            "</episodedetails>"
         )
 
     def test_create_nfo_for_season(self, tmp_path, game_dates):
         _create_fake_mp4_files(base_path=tmp_path)
-        mdc = MetaDataCreator(base_dir=tmp_path, game_dates=game_dates)
+        MetaDataCreator(base_dir=tmp_path, game_dates=game_dates)

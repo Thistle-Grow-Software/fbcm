@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 
@@ -37,7 +37,7 @@ COMMON_OPTION_MAPPINGS = {
 }
 
 
-def find_config(explicit_path: Optional[str] = None) -> Optional[Path]:
+def find_config(explicit_path: str | None = None) -> Path | None:
     """
     Find the config file using auto-discovery or explicit path.
 
@@ -68,7 +68,7 @@ def find_config(explicit_path: Optional[str] = None) -> Optional[Path]:
     return None
 
 
-def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
+def load_config(config_path: Path | None = None) -> dict[str, Any]:
     """
     Load configuration from a YAML file.
 
@@ -78,17 +78,17 @@ def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     if config_path is None:
         return {}
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = yaml.safe_load(f)
 
     return config if config else {}
 
 
 def get_config_value(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     command_name: str,
     param_name: str,
-    common_key: Optional[str] = None,
+    common_key: str | None = None,
 ) -> Any:
     """
     Get a config value for a specific command parameter.
@@ -114,11 +114,11 @@ def get_config_value(
 
 
 def apply_config_to_kwargs(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     command_name: str,
-    kwargs: Dict[str, Any],
-    cli_source: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    kwargs: dict[str, Any],
+    cli_source: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Apply config values to kwargs, respecting CLI > Config > Default precedence.
 

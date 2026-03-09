@@ -1,17 +1,13 @@
 import json
 import math
 import os
-import sys
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from docx import Document
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import nsdecls, qn
-from docx.shared import Cm, Inches, Pt, RGBColor, Twips
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches, Pt, RGBColor
 from PIL import Image, ImageDraw, ImageFont
 
 from ..constants import POSITION_STATS
@@ -27,10 +23,10 @@ def get_primary_position(position: str) -> str:
 
 class SchoolColors:
     def __init__(self, colors_file: str):
-        with open(colors_file, "r") as infile:
+        with open(colors_file) as infile:
             self.color_data = self._normalize_color_data(data=json.load(infile))
 
-    def _normalize_color_data(self, data: Dict) -> Dict:
+    def _normalize_color_data(self, data: dict) -> dict:
         normalized = {}
         for division in ["FBS", "FCS"]:
             if division not in data:
@@ -45,9 +41,7 @@ class SchoolColors:
         normalized = school.lower().strip()
         colors = ColorScheme(**self.color_data[normalized])
         colors.dark = self.darken_color(colors.primary, 0.3)
-        colors.medium = self.blend_colors(colors.light,
-                                          colors.primary,
-                                          0.20)
+        colors.medium = self.blend_colors(colors.light, colors.primary, 0.20)
 
         colors.primary_rgb = self.hex_to_rgb(colors.primary)
         colors.light_rgb = self.hex_to_rgb(colors.light)
@@ -151,7 +145,7 @@ def create_rating_ring(
         font = ImageFont.truetype(
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size // 4
         )
-    except:
+    except Exception:
         font = ImageFont.load_default()
 
     text = str(int(rating)) if rating == int(rating) else f"{rating:.1f}"
@@ -255,18 +249,20 @@ def skill_bar(pct: int) -> str:
 
 
 class WordDocGenerator:
-    def __init__(self,
-                 output_path: str,
-                 ring_image_base_dir: str,
-                 colors_path: str,
-                 prospect: ProspectDataSoup = None):
+    def __init__(
+        self,
+        output_path: str,
+        ring_image_base_dir: str,
+        colors_path: str,
+        prospect: ProspectDataSoup = None,
+    ):
         self.output_path = output_path
         self.ring_img_base_dir = ring_image_base_dir
         self.ring_img_path = None
-        self._ring_img_paths: List[str] = []
+        self._ring_img_paths: list[str] = []
         self.color_handler = SchoolColors(colors_file=colors_path)
         self._prospect_count = 0
-        self._last_prospect_name: Optional[str] = None
+        self._last_prospect_name: str | None = None
         self.document = Document()
 
         if prospect:
@@ -306,11 +302,7 @@ class WordDocGenerator:
         inner_radius = outer_radius - ring_width
         bbox = [padding, padding, size - padding, size - padding]
 
-        draw.arc(bbox,
-                 start=0,
-                 end=360,
-                 fill=self.colors.light_rgb,
-                 width=ring_width)
+        draw.arc(bbox, start=0, end=360, fill=self.colors.light_rgb, width=ring_width)
 
         rating = self.prospect.ratings.overall_rating
 
@@ -318,11 +310,13 @@ class WordDocGenerator:
             start_angle = -90
             sweep_angle = (rating / 100) * 360
             end_angle = start_angle + sweep_angle
-            draw.arc(bbox,
-                     start_angle,
-                     end_angle,
-                     fill=self.colors.primary_rgb,
-                     width=ring_width)
+            draw.arc(
+                bbox,
+                start_angle,
+                end_angle,
+                fill=self.colors.primary_rgb,
+                width=ring_width,
+            )
 
             cap_radius = ring_width // 2
             start_x, start_y = center, padding + ring_width // 2
@@ -367,7 +361,7 @@ class WordDocGenerator:
             font = ImageFont.truetype(
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size // 4
             )
-        except:
+        except Exception:
             font = ImageFont.load_default()
 
         text = str(int(rating)) if rating == int(rating) else f"{rating:.1f}"
@@ -382,7 +376,9 @@ class WordDocGenerator:
             font=font,
         )
 
-        self.ring_img_path = f"{self.ring_img_base_dir}_{self.prospect.basic_info.full_name}_ring.png"
+        self.ring_img_path = (
+            f"{self.ring_img_base_dir}_{self.prospect.basic_info.full_name}_ring.png"
+        )
         img.save(self.ring_img_path, "PNG")
         self._ring_img_paths.append(self.ring_img_path)
         return self.ring_img_path
@@ -398,7 +394,9 @@ class WordDocGenerator:
         photo_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
         photo_para = photo_cell.paragraphs[0]
-        photo_para.add_run().add_picture(str(self.prospect.basic_info.photo_path), width=Inches(1.3))
+        photo_para.add_run().add_picture(
+            str(self.prospect.basic_info.photo_path), width=Inches(1.3)
+        )
 
         name_cell = header_table.cell(0, 1)
         name_cell.width = Inches(4.0)
@@ -457,11 +455,36 @@ class WordDocGenerator:
         rankings_table.autofit = False
 
         rankings_data = [
-            ("DRAFT BUZZ", str(self.prospect.ratings.overall_rank), "OVERALL", self.colors.primary),
-            ("DRAFT BUZZ", str(self.prospect.ratings.position_rank), "POSITION", self.colors.dark),
-            ("DRAFT", str(self.prospect.ratings.draft_projection), "PROJECTION", self.colors.primary),
-            ("CONSENSUS", str(self.prospect.ratings.avg_overall_rank), "OVERALL", self.colors.dark),
-            ("CONSENSUS", str(self.prospect.ratings.avg_position_rank), "POSITION", self.colors.primary),
+            (
+                "DRAFT BUZZ",
+                str(self.prospect.ratings.overall_rank),
+                "OVERALL",
+                self.colors.primary,
+            ),
+            (
+                "DRAFT BUZZ",
+                str(self.prospect.ratings.position_rank),
+                "POSITION",
+                self.colors.dark,
+            ),
+            (
+                "DRAFT",
+                str(self.prospect.ratings.draft_projection),
+                "PROJECTION",
+                self.colors.primary,
+            ),
+            (
+                "CONSENSUS",
+                str(self.prospect.ratings.avg_overall_rank),
+                "OVERALL",
+                self.colors.dark,
+            ),
+            (
+                "CONSENSUS",
+                str(self.prospect.ratings.avg_position_rank),
+                "POSITION",
+                self.colors.primary,
+            ),
         ]
 
         for i, (source, value, label, bg_color) in enumerate(rankings_data):
@@ -585,7 +608,9 @@ class WordDocGenerator:
                         stat_cell.width = Inches(6.75 / total_stats)
                         remove_cell_borders(stat_cell)
                         set_cell_shading(stat_cell, bg_color)
-                        set_cell_margins(stat_cell, top=80, bottom=40, left=40, right=40)
+                        set_cell_margins(
+                            stat_cell, top=80, bottom=40, left=40, right=40
+                        )
                         stat_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
                         p1 = stat_cell.paragraphs[0]
@@ -673,7 +698,12 @@ class WordDocGenerator:
             p = skills_cell.add_paragraph()
             p.paragraph_format.space_after = Pt(2)
 
-            display_name = skill_name.replace("rating", "rtg").replace("targeted", "tgt").replace("_", " ").title()
+            display_name = (
+                skill_name.replace("rating", "rtg")
+                .replace("targeted", "tgt")
+                .replace("_", " ")
+                .title()
+            )
             run = p.add_run(f"{display_name:<20} ")
             run.font.name = "Consolas"
             run.font.size = Pt(10)
@@ -746,7 +776,9 @@ class WordDocGenerator:
             run.font.bold = True
             run.font.color.rgb = self.colors.primary_rgb
 
-            bio_text = self.prospect.scouting_report.bio.replace("Draft Profile: Bio", "").strip()
+            bio_text = self.prospect.scouting_report.bio.replace(
+                "Draft Profile: Bio", ""
+            ).strip()
 
             p = self.document.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
@@ -834,7 +866,11 @@ class WordDocGenerator:
 
             p = cell.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            run = p.add_run(self.prospect.scouting_report.summary.replace("Scouting Report: Summary", ""))
+            run = p.add_run(
+                self.prospect.scouting_report.summary.replace(
+                    "Scouting Report: Summary", ""
+                )
+            )
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
 

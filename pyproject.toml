@@ -23,55 +23,58 @@ dependencies = [
     "lxml>=5.0",
 ]
 
-[tool.poetry.group.dev.dependencies]
-black = "25.12.0"
-isort = "7.0.0"
-pytest = "9.0.2"
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.11",
+    "mypy>=1.15",
+    "pytest==9.0.2",
+    "types-PyYAML",
+    "types-requests",
+    "types-beautifulsoup4",
+]
 
 [project.scripts]
 fbcm = "fbcm.fbcm:cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[tool.poetry]
-packages = [{include = "fbcm", from = "src"}]
-
-[[tool.poetry.source]]
-name = "codeartifact"
-url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/"
-priority = "supplemental"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.black]
+[tool.hatch.build.targets.wheel]
+packages = ["src/fbcm"]
+
+[tool.uv]
+index-url = "https://pypi.org/simple"
+
+[[tool.uv.index]]
+name = "codeartifact"
+url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/"
+explicit = true
+
+[tool.uv.sources]
+griddy = { index = "codeartifact" }
+
+[tool.ruff]
 line-length = 88
-target-version = ['py313']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
+target-version = "py314"
+src = ["src", "tests"]
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-src_paths = ["src", "tests"]
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fbcm"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -89,10 +92,15 @@ strict_equality = true
 module = "tests.*"
 disallow_untyped_defs = false
 
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
+[[tool.mypy.overrides]]
+module = [
+    "yt_dlp.*",
+    "ffmpeg.*",
+    "mutagen.*",
+    "docx.*",
+    "griddy.*",
 ]
+ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["src"]

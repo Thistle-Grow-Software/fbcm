@@ -2,7 +2,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .constants import ABBREVIATION_MAP, CONCURRENT_FRAGMENTS, THROTTLED_RATE_LIMIT
 
@@ -90,16 +90,14 @@ def convert_cfl_playoff_name_to_int(year: int, week_name: str) -> int:
     num = None
     if "Semi-Final" in week_name:
         num = 22
-    elif "Final" in week_name:
-        num = 23
-    elif "Grey Cup" in week_name:
+    elif "Final" in week_name or "Grey Cup" in week_name:
         num = 23
     return num
 
 
 def get_week_int_as_string(
     week: str, year: int = None, league: str = "nfl"
-) -> Union[int, str]:
+) -> int | str:
     """
     Given a week's name and a season, determine the week number of the game.
 
@@ -214,7 +212,6 @@ def transform_file_name(orig_file_stem: str) -> str:
 
     year = stem_parts[0]
     game_num = stem_parts[3]
-    date = stem_parts[4]
 
     try:
         divider_index = stem_parts.index("at")
@@ -229,7 +226,7 @@ def transform_file_name(orig_file_stem: str) -> str:
     prefix = f"NCAA - s{year}e{game_num.zfill(2)}"
 
     game_str = f"{game_num.zfill(2)}{bowl_str}"
-    new_stem = f"{prefix} - " f"{year}_Gm{game_str}_" f"{team_one}_{divider}_{team_two}"
+    new_stem = f"{prefix} - {year}_Gm{game_str}_{team_one}_{divider}_{team_two}"
     return new_stem
 
 
@@ -263,9 +260,9 @@ class BaseDownloader:
 
     def __init__(
         self,
-        cookie_file_path: Optional[Union[str, Path]] = None,
-        destination_dir: Optional[Union[str, Path]] = None,
-        add_yt_opts: Optional[Dict] = None,
+        cookie_file_path: str | Path | None = None,
+        destination_dir: str | Path | None = None,
+        add_yt_opts: dict | None = None,
         browser: str = "firefox",
     ) -> None:
         """
@@ -314,7 +311,7 @@ class BaseDownloader:
     def download_from_file(
         self,
         input_file: Path,
-        dlp_overrides: Optional[Dict] = None,
+        dlp_overrides: dict | None = None,
         output_file_name_template: str = "%(title)s.%(ext)s",
     ) -> None:
         """
@@ -355,7 +352,7 @@ class FileOperationsUtil:
 
     def __init__(
         self,
-        directory_path: Union[str, Path],
+        directory_path: str | Path,
         pretend: bool = False,
         verbose: bool = False,
     ) -> None:
@@ -458,7 +455,7 @@ class FileOperationsUtil:
 
     def convert_formats(
         self, orig_format: str = "mkv", new_format: str = "mp4", delete: bool = False
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Use ffmpeg to convert video files in self.directory_path from one format to another.
 
@@ -556,7 +553,7 @@ class MetaDataCreator:
     # season_premieres: Dict
 
     def __init__(
-        self, base_dir: Union[str, Path], game_dates: Dict, league: str = "nfl"
+        self, base_dir: str | Path, game_dates: dict, league: str = "nfl"
     ) -> None:
         """
         Initialize the utility, set basic config.
@@ -630,7 +627,7 @@ class MetaDataCreator:
             f"<episodedetails>\n"
             f"\t<title>{title}</title>\n"
             f"\t<season>{year}</season>\n"
-            f"\t<episode>{episode_num.lstrip("0")}</episode>\n"
+            f"\t<episode>{episode_num.lstrip('0')}</episode>\n"
             f"\t<aired>{aired}</aired>\n"
             f"</episodedetails>"
         )

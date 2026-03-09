@@ -9,23 +9,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build and Development Commands
 
 ```bash
-# Install in editable mode for development
-pip install -e .
-
-# Install with dev dependencies (pytest)
-pip install -e ".[dev]"
+# Sync dependencies (install project + dev deps)
+uv sync --extra dev
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run a single test file
-pytest tests/test_fbcm/test_base.py
+uv run pytest tests/test_fbcm/test_base.py
 
 # Run a specific test
-pytest tests/test_fbcm/test_base.py::test_function_name -v
+uv run pytest tests/test_fbcm/test_base.py::test_function_name -v
 
 # Format code
-black src/
+uv run ruff format src/
+
+# Lint (and auto-fix)
+uv run ruff check --fix src/
+
+# Type check
+uv run mypy src/
+
+# Format code
+tgf-format
 ```
 
 ## Architecture
@@ -53,6 +59,10 @@ NFO metadata files (XML format) are generated alongside videos for Jellyfin/Plex
 - `DESTINATION_DIR` - Default output directory for nfl-games
 - `CONCURRENT_FRAGMENTS` - yt-dlp concurrent fragment downloads (default: 1)
 - `THROTTLED_RATE_LIMIT` - yt-dlp rate limit (default: 1000000)
+- `AWS_CODEARTIFACT_TOKEN` - Authentication token used for interacting with AWS CodeArtifact PyPi repository
+- `UV_INDEX_PRIVATE_REGISTRY_USERNAME` - Username used by `uv` when interacting with CodeArtifact
+- `UV_INDEX_PRIVATE_REGISTRY_PASSWORD` - Same value as `AWS_CODEARTIFACT_TOKEN`, used by `uv` to interact with CodeArtifact
+- `ISSUE_PREFIX` - Used by the `tgf-commit` function (described in the next section) to create commit messages that will be linked to Jira issues properly.
 
 ## Configuration File
 
@@ -73,3 +83,32 @@ See `fbcm.yaml.example` for the config file structure. Common options (`cookies_
 - `mutagen` - MP4 metadata manipulation
 - `click` - CLI framework
 - `pyyaml` - Config file parsing
+
+
+## Custom Shell Functions and Aliases (from ~/.bashrc and ~/.bash_functions)
+- `artifact-token` - Initializes necessary authentication info for interacting with AWS CodeArtifact. Usage: `artifact-token`
+- `griddy` - Navigates to the project directory, sets project specific env vars, and invokes `artifact-token`. Usage: `griddy`
+- `tgf-format` - Runs `isort` and `black` _in the current directory_. Usage: `tgf-format`
+- `tgf-commit` - Stages, commits (signed), and pushes changes in one step. Enforces Conventional Commit formatting derived from the current branch name. Usage: `tgf-commit [-a] [-p|--pull-request] <message>` See `tgf-commit --help` for more.
+
+## Git Conventions
+
+- **Always run `tgf-format` before committing.**
+- **Always use `tgf-commit` to commit changes.** It will automatically handle commit message formatting, and can create pull requests for you automatically. 
+
+### Branch Naming Conventions
+- All branches should be prefixed with the `<type>` of issue it addresses. Valid types are `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `style`, `perf`, and `build`.
+- `<type>` should be followed by `/<$ISSUE_PREFIX>-<ISSUE NUMBER>`, and finally end with `-<short-description>`
+
+### Examples
+
+- `feat/TGS-31-player-stats`
+- `docs/TGS-50-update-usage-docs`
+
+It is crucial to follow this branch naming convention, as the `tgf-commit` command uses the branch name to form commit messages.
+
+## Working Conventions
+- When context usage exceeds 60%, proactively summarize current task state under "## Current Task" in this file
+- Run /compact proactively rather than waiting for the context limit
+- Always use `tgf-format` before commiting changes and `tgf-commit` to commit changes.
+- Run `uv lock` before committing any time `pyproject.toml` has been modified.

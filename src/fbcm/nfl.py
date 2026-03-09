@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from yt_dlp import YoutubeDL
 
@@ -36,9 +36,9 @@ class NFLShowDownloader:
 
     def __init__(
         self,
-        episode_list_path: Union[str, Path],
-        cookie_file_path: Union[str, Path],
-        show_dir: Union[str, Path],
+        episode_list_path: str | Path,
+        cookie_file_path: str | Path,
+        show_dir: str | Path,
         pause_time: int = 30,
     ) -> None:
         """
@@ -59,7 +59,7 @@ class NFLShowDownloader:
         """
         self.base_url = "https://www.nfl.com/plus/episodes/"
 
-        with open(str(episode_list_path), "r") as infile:
+        with open(str(episode_list_path)) as infile:
             data = json.load(infile)
             self.episodes = data["seasons"]
 
@@ -151,13 +151,13 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
 
     def __init__(
         self,
-        firefox_profile_path: Union[str, Path],
-        destination_dir: Union[str, Path],
-        nfl_username: Optional[str] = None,
-        nfl_password: Optional[str] = None,
-        nfl_auth: Optional[Dict[str, Any]] = None,
+        firefox_profile_path: str | Path,
+        destination_dir: str | Path,
+        nfl_username: str | None = None,
+        nfl_password: str | None = None,
+        nfl_auth: dict[str, Any] | None = None,
         show_login: bool = False,
-        add_yt_opts: Optional[Dict] = None,
+        add_yt_opts: dict | None = None,
     ) -> None:
         """
         Create the downloader; set its download and storage parameters
@@ -203,7 +203,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
                 headless_login=(not show_login),
             )
 
-    def _should_extract(self, game: WeeklyGameDetail, teams: List[str]) -> bool:
+    def _should_extract(self, game: WeeklyGameDetail, teams: list[str]) -> bool:
         """
         Determine whether we should proceed with extracting this game.
 
@@ -228,8 +228,8 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         return False
 
     def extract_game_info(
-        self, game: WeeklyGameDetail, replay_types: Optional[List] = None
-    ) -> Dict:
+        self, game: WeeklyGameDetail, replay_types: list | None = None
+    ) -> dict:
         """
         Extract only the information relevant to downloading and storing the replays properly.
 
@@ -275,7 +275,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         return game_info
 
     def construct_metadata_for_game(
-        self, game: Dict, replay_type: str, ep_num: int
+        self, game: dict, replay_type: str, ep_num: int
     ) -> str:
         """
         Given information about the game, construct the XML string that
@@ -307,7 +307,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
             f"</episodedetails>"
         )
 
-    def write_metadata_file(self, game: Dict, replay_type: str, ep_num: int) -> None:
+    def write_metadata_file(self, game: dict, replay_type: str, ep_num: int) -> None:
         """
         Construct metadata for the given game and store it in an nfo file.
 
@@ -329,7 +329,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         )
         nfo_file.write_text(xml_string)
 
-    def _construct_replay_url(self, game: Dict, replay_type: str) -> str:
+    def _construct_replay_url(self, game: dict, replay_type: str) -> str:
         """
         Simple helper method to construct the URL yt-dlp should use to extract the video file.
 
@@ -344,7 +344,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         """
         return f"{self._replay_base_url}{game['slug']}?mcpid={game['replays'][replay_type]['mcpPlaybackId']}"
 
-    def construct_file_name(self, game: Dict, replay_type: str, ep_num: int) -> str:
+    def construct_file_name(self, game: dict, replay_type: str, ep_num: int) -> str:
         """
         Create the video file's name according to the established format.
 
@@ -388,9 +388,9 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         self,
         season: int,
         week: int,
-        teams: Optional[List[str]] = None,
-        replay_types: Optional[List[str]] = None,
-    ) -> List[Dict]:
+        teams: list[str] | None = None,
+        replay_types: list[str] | None = None,
+    ) -> list[dict]:
         """
         Combine the tasks of 1.) Fetching the list of games, 2.) Extracting the info we care about.
 
@@ -427,7 +427,7 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
 
         return extracted_games
 
-    def download_game(self, game: Dict, ep_num: int) -> None:
+    def download_game(self, game: dict, ep_num: int) -> None:
         """
         Download all the replay types we specified for this game.
 
@@ -455,10 +455,10 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         self,
         season: int,
         week: int,
-        teams: Optional[List[str]] = None,
-        replay_types: Optional[List[str]] = None,
+        teams: list[str] | None = None,
+        replay_types: list[str] | None = None,
         sleep_time: int = 15,
-        start_ep: Optional[int] = None,
+        start_ep: int | None = None,
     ) -> None:
         """
         Combine the tasks of

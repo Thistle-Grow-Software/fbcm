@@ -1,5 +1,4 @@
 # Ensure the src-based package layout is importable in tests without installation
-import os
 import sys
 from pathlib import Path
 

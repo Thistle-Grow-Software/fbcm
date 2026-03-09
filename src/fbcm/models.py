@@ -1,15 +1,17 @@
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypeAlias, get_args, get_origin, Union
+from typing import Any, TypeAlias, Union, get_args, get_origin
+
 from docx.shared import RGBColor
 
 from .constants import PHOTO_BASE_DIR
+
 
 @dataclass
 class BaseModel:
     exclude_fields = []
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             key: value
             for key, value in asdict(self).items()
@@ -17,7 +19,7 @@ class BaseModel:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BaseModel":
+    def from_dict(cls, data: dict[str, Any]) -> BaseModel:
         """Create an instance from a dictionary, handling nested dataclasses."""
         if data is None:
             return None
@@ -70,7 +72,7 @@ class ColorScheme(BaseModel):
     secondary: str
     light: str
 
-    dark : str | None = None
+    dark: str | None = None
     medium: str | None = None
     primary_rgb: RGBColor | None = None
     light_rgb: RGBColor | None = None
@@ -301,8 +303,8 @@ class BasicInfo(BaseModel):
 @dataclass
 class ScoutingReport(BaseModel):
     bio: str = ""
-    strengths: List[str] = field(default_factory=list)
-    weaknesses: List[str] = field(default_factory=list)
+    strengths: list[str] = field(default_factory=list)
+    weaknesses: list[str] = field(default_factory=list)
     summary: str | None = None
 
 
@@ -338,12 +340,12 @@ class ProspectDataSoup(BaseModel):
     basic_info: BasicInfo | None = None
     ratings: RatingsAndRankings | None = None
     skills: SkillRatings | None = None
-    comparisons: List[Comparison] | None = None
+    comparisons: list[Comparison] | None = None
     stats: Stats | None = None
     scouting_report: ScoutingReport | None = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProspectDataSoup":
+    def from_dict(cls, data: dict[str, Any]) -> ProspectDataSoup:
         """Create a ProspectDataSoup instance, using position to determine correct stats/skills types."""
         if data is None:
             return None
@@ -373,7 +375,9 @@ class ProspectDataSoup(BaseModel):
 
         # Handle comparisons
         if "comparisons" in data and data["comparisons"] is not None:
-            kwargs["comparisons"] = [Comparison.from_dict(c) for c in data["comparisons"]]
+            kwargs["comparisons"] = [
+                Comparison.from_dict(c) for c in data["comparisons"]
+            ]
 
         # Handle stats with position-specific class
         if "stats" in data and data["stats"] is not None:
@@ -381,6 +385,8 @@ class ProspectDataSoup(BaseModel):
 
         # Handle scouting_report
         if "scouting_report" in data and data["scouting_report"] is not None:
-            kwargs["scouting_report"] = ScoutingReport.from_dict(data["scouting_report"])
+            kwargs["scouting_report"] = ScoutingReport.from_dict(
+                data["scouting_report"]
+            )
 
         return cls(**kwargs)
