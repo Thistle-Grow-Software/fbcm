@@ -5,11 +5,10 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 from random import uniform
-from typing import Tuple
 
 import click
 
-from .constants import DEFAULT_REPLAY_TYPES, OUTPUT_FORMATS, POSITIONS, TEAM_FULL_NAMES
+from .constants import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
 from .utils import apply_config_to_kwargs, find_config, load_config
 
 
@@ -167,10 +166,10 @@ def nfl_games(
     nfl_password: str,
     show_login: bool,
     season: int,
-    week: Tuple[int],
-    team: Tuple[str],
-    exclude: Tuple[str],
-    replay_type: Tuple[str],
+    week: tuple[int],
+    team: tuple[str],
+    exclude: tuple[str],
+    replay_type: tuple[str],
     start_ep: int,
     list_only: bool,
 ):
@@ -230,7 +229,7 @@ def nfl_games(
     # Load credentials from file if provided
     nfl_auth = None
     if credentials_file:
-        with open(credentials_file, "r") as f:
+        with open(credentials_file) as f:
             nfl_auth = json.load(f)
         click.echo(f"Using credentials file: {credentials_file}")
     else:
@@ -334,7 +333,7 @@ def extract_draft_profiles(
         selected_positions = POSITIONS
     print(f"Position: {selected_positions}")
 
-    with open(input_file, "r") as infile:
+    with open(input_file) as infile:
         profile_urls = json.load(infile)
 
     with sync_playwright() as playwright:
@@ -343,7 +342,7 @@ def extract_draft_profiles(
         )
 
         completed_profiles = []
-        with open(f"input_files/completed.json", "r") as infile:
+        with open("input_files/completed.json") as infile:
             completed_profiles = json.load(infile)
 
         click.echo(f"Loaded {len(completed_profiles)} completed profiles.")
@@ -375,13 +374,17 @@ def extract_draft_profiles(
                     completed_profiles.append(prof_slug)
 
                 except TimeoutError as e:
-                    dump_currently_completed(position=pos,
-                                             data=position_player_data,
-                                             completed_list=completed_profiles)
+                    dump_currently_completed(
+                        position=pos,
+                        data=position_player_data,
+                        completed_list=completed_profiles,
+                    )
                     raise e
-            dump_currently_completed(position=pos,
-                                     data=position_player_data,
-                                     completed_list=completed_profiles)
+            dump_currently_completed(
+                position=pos,
+                data=position_player_data,
+                completed_list=completed_profiles,
+            )
 
             time.sleep(random.uniform(10, 15))
 
@@ -414,31 +417,34 @@ def gen_prospect_word_docs(
         selected_positions = POSITIONS
     click.echo(f"Position: {selected_positions}")
 
-    wdg = WordDocGenerator(output_path=output_directory,
-                           ring_image_base_dir=output_directory,
-                           colors_path="input_files/school_colors.json")
+    wdg = WordDocGenerator(
+        output_path=output_directory,
+        ring_image_base_dir=output_directory,
+        colors_path="input_files/school_colors.json",
+    )
 
     click.echo(f"Provided output directory: {output_directory}")
     for position in selected_positions:
         click.echo(f"Generating docs for {position} position.")
         input_file = f"output_data/{position}.json"
 
-        with open(input_file, "r") as infile:
+        with open(input_file) as infile:
             position_data = json.load(infile)
 
         click.echo(f"Processing {len(position_data)} profiles.")
 
         cur_count = 1
         for prospect_name, data in position_data.items():
-            click.echo(f"Generating profile for {prospect_name}, #{cur_count} of {len(position_data)}")
+            click.echo(
+                f"Generating profile for {prospect_name}, #{cur_count} of {len(position_data)}"
+            )
 
             prospect = ProspectDataSoup.from_dict(data=data)
             wdg.add_prospect(prospect=prospect)
 
             wdg.generate_complete_document()
             cur_count += 1
-    wdg.generate_complete_document(filename=f"2026_All_Prospects_COMPLETE.docx")
-
+    wdg.generate_complete_document(filename="2026_All_Prospects_COMPLETE.docx")
 
 
 @cli.command()
@@ -488,15 +494,17 @@ def draft_sandbox(ctx):
 
     click.echo("Draft profile sandbox...")
 
-    with open("output_data/QB.json", "r") as infile:
+    with open("output_data/QB.json") as infile:
         qb_data = json.load(infile)
 
     fm_data = qb_data["Fernando Mendoza"]
     mendoza_obj = ProspectDataSoup.from_dict(fm_data)
-    wdg = WordDocGenerator(prospect=mendoza_obj,
-                           output_path="output_data",
-                           ring_image_base_dir="output_data",
-                           colors_path="input_files/school_colors.json")
+    wdg = WordDocGenerator(
+        prospect=mendoza_obj,
+        output_path="output_data",
+        ring_image_base_dir="output_data",
+        colors_path="input_files/school_colors.json",
+    )
     wdg.generate_complete_document()
 
 
@@ -606,7 +614,7 @@ def generate_nfo_files(
 
     click.echo(f"Generating .nfo files for {league.upper()} season {season}.")
     click.echo(f"Looking for relevant video files in {directory}")
-    with open(dates, "r") as infile:
+    with open(dates) as infile:
         game_dates = json.load(infile)
 
     mdc = MetaDataCreator(base_dir=directory, game_dates=game_dates, league=league)

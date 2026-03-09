@@ -1,10 +1,7 @@
 name: Build application and publish to AWS CodeArtifact
 
-on:
-  push:
-    branches:
-      - master
-  workflow_dispatch:
+# Temporarily disabled - original triggers: push (master), workflow_dispatch
+on: workflow_dispatch
 
 jobs:
   check-version-bump:

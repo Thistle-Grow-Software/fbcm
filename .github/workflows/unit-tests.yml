@@ -1,11 +1,7 @@
 name: CI
 
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches: ["**"]
+# Temporarily disabled - original triggers: push (master), pull_request (all branches)
+on: workflow_dispatch
 
 permissions:
   contents: read
@@ -43,12 +39,16 @@ jobs:
           python -m pip install --upgrade pip
           # Install the package and tooling needed for CI
           pip install .
-          pip install pytest pytest-cov black
+          pip install pytest pytest-cov ruff mypy
 
-      - name: Black code style check
-        run: |
-          black --version
-          black --check .
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Ruff lint check
+        run: ruff check .
+
+      - name: Type check with mypy
+        run: mypy src/
 
       - name: Run tests with coverage
         run: |

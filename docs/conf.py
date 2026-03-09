@@ -2,7 +2,6 @@
 #
 # Minimal, repo-local configuration to build docs for the fbcm project.
 
-import os
 import sys
 from datetime import datetime
 from pathlib import Path

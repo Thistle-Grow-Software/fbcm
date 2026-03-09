@@ -1,17 +1,14 @@
-import io
 import re
 import time
 from collections import defaultdict
 from pathlib import Path
 from random import uniform
-from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup, Tag
-from playwright.sync_api import Browser
+from playwright.sync_api import Browser, Playwright
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import Playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from fbcm.constants import POSITION_TO_GROUP_MAP
@@ -38,6 +35,7 @@ from fbcm.models import (
     Stats,
     TackleStats,
 )
+
 
 class PageFetcher:
     """Handles fetching web pages using Playwright browser automation."""
@@ -74,7 +72,7 @@ class PageFetcher:
 
     def fetch(
         self, url: str, attempt_image_fetch: bool = False
-    ) -> Tuple[str, Optional[bytes], str]:
+    ) -> tuple[str, bytes | None, str]:
         """
         Fetch page content using Playwright browser automation.
 
@@ -123,7 +121,7 @@ class PageFetcher:
 
     def _fetch_with_page(
         self, url: str, attempt_image_fetch: bool
-    ) -> Tuple[str, Optional[bytes], str]:
+    ) -> tuple[str, bytes | None, str]:
         """Internal method to fetch a page. May raise PlaywrightError."""
         self._ensure_browser_connected()
         print("Opening new page...")
@@ -147,9 +145,7 @@ class PageFetcher:
         finally:
             page.close()
 
-    def _find_and_download_image(
-        self, page, base_url: str
-    ) -> Tuple[Optional[bytes], str]:
+    def _find_and_download_image(self, page, base_url: str) -> tuple[bytes | None, str]:
         """Find and download the player image from the page."""
         image_url = self._find_image_url(page)
 
@@ -161,13 +157,13 @@ class PageFetcher:
 
         return None, "jpeg"
 
-    def _find_image_url(self, page) -> Optional[str]:
+    def _find_image_url(self, page) -> str | None:
         """Try to find image URL using predefined selectors."""
         img = page.locator("figure.player-info__photo img")
         src = img.get_attribute("src")
         return self._make_absolute_url(url=src, base_url=self.base_url)
 
-    def _find_any_large_image(self, page) -> Optional[str]:
+    def _find_any_large_image(self, page) -> str | None:
         """Fallback: try to find any large player image."""
         try:
             images = page.query_selector_all("img")
@@ -191,7 +187,7 @@ class PageFetcher:
 
     def _download_image(
         self, page, image_url: str, base_url: str
-    ) -> Tuple[Optional[bytes], str]:
+    ) -> tuple[bytes | None, str]:
         """Download image from URL."""
         print(f"Found player image: {image_url[:80]}...")
         try:
@@ -307,7 +303,7 @@ class ProspectParserSoup:
         skill_ratings_dict = self._extract_skill_ratings(rows=skill_rtgs_rows)
         return self._construct_skill_ratings_obj(ratings=skill_ratings_dict)
 
-    def parse_comparisons(self, table: Tag) -> List[Comparison]:
+    def parse_comparisons(self, table: Tag) -> list[Comparison]:
         comparisons = []
         comp_rows = table.find("tbody").find_all("tr")
 
@@ -382,7 +378,7 @@ class ProspectParserSoup:
 
         return stats
 
-    def _extract_games_and_snaps(self) -> Dict:
+    def _extract_games_and_snaps(self) -> dict:
         gp_label = self._get_tag_with_title_containing(
             tag=self.soup, search_str="College Games Played"
         )
@@ -413,7 +409,7 @@ class ProspectParserSoup:
         )
 
     ##### Basic Info #####
-    def _parse_name(self) -> Tuple[str, str]:
+    def _parse_name(self) -> tuple[str, str]:
         first_name = self.soup.find("span", class_="player-info__first-name").get_text(
             strip=True
         )
@@ -453,7 +449,7 @@ class ProspectParserSoup:
 
         return position_group_str
 
-    def _parse_player_info_details_div(self, div: Tag) -> Dict:
+    def _parse_player_info_details_div(self, div: Tag) -> dict:
         # This div contains the values for:
         # height, weight, college, position, player_class, hometown
         basic_info_dict = {}
@@ -471,7 +467,7 @@ class ProspectParserSoup:
 
         return basic_info_dict
 
-    def _parse_basic_info_table(self, tag: Tag) -> Dict:
+    def _parse_basic_info_table(self, tag: Tag) -> dict:
         # Includes jersery #, sub_position, last_updated, forty_time
         jersey_num_tag = tag.find(text=re.compile(r"#\d+"))
         if jersey_num_tag:
@@ -686,7 +682,7 @@ class ProspectParserSoup:
         rtg_as_str = meter_div["title"].split(":")[-1].strip().replace("%", "")
         return int(rtg_as_str)
 
-    def _extract_skill_ratings(self, rows: List[Tag]) -> Dict:
+    def _extract_skill_ratings(self, rows: list[Tag]) -> dict:
         skills = {}
         for row in rows:
             skill_name, rating = (
@@ -705,7 +701,7 @@ class ProspectParserSoup:
 
         return skills
 
-    def _extract_proj_and_rankings(self, row) -> Dict:
+    def _extract_proj_and_rankings(self, row) -> dict:
         projection_label = self._get_tag_with_text(
             search_space=row, tag_name="span", text="draft projection"
         )
@@ -727,15 +723,15 @@ class ProspectParserSoup:
             "position_rank": pos_rank,
         }
 
-    def _get_projection_ranks_row(self, rows: List[Tag]) -> Optional[Tag]:
+    def _get_projection_ranks_row(self, rows: list[Tag]) -> Tag | None:
         for row in rows:
             if "draft projection" in row.get_text().lower():
                 return row
         return None
 
     def _gather_skill_rtg_rows(
-        self, rows: List[Tag], sentinel_val: str = "draft projection"
-    ) -> List[Tag]:
+        self, rows: list[Tag], sentinel_val: str = "draft projection"
+    ) -> list[Tag]:
         skill_rows = []
         for row in rows:
             if sentinel_val in row.get_text().lower():
@@ -744,7 +740,7 @@ class ProspectParserSoup:
 
         return skill_rows
 
-    def _construct_skill_ratings_obj(self, ratings: Dict) -> SkillRatings:
+    def _construct_skill_ratings_obj(self, ratings: dict) -> SkillRatings:
         skills = None
         match self.position:
             case "QB":
@@ -768,14 +764,14 @@ class ProspectParserSoup:
         return skills
 
     ##### Outlet ratings ####
-    def _extract_outlet_ratings(self, table: Tag) -> Dict[str, Optional[float]]:
+    def _extract_outlet_ratings(self, table: Tag) -> dict[str, float | None]:
         return {
             "espn": self._extract_espn(table=table),
             "rivals": self._extract_rivals(table=table),
             "rtg_247": self._extract_247(table=table),
         }
 
-    def _extract_rivals(self, table: Tag) -> Optional[float]:
+    def _extract_rivals(self, table: Tag) -> float | None:
         rivals_row = self._get_tag_with_text(
             search_space=table, tag_name="span", text="rivals"
         )
@@ -788,7 +784,7 @@ class ProspectParserSoup:
 
         return rivals_rtg
 
-    def _extract_247(self, table: Tag) -> Optional[float]:
+    def _extract_247(self, table: Tag) -> float | None:
         rtg = None
         sports_247_rtg_row = self._get_tag_with_text(
             search_space=table, tag_name="span", text="247 RATING"
@@ -800,7 +796,7 @@ class ProspectParserSoup:
 
         return rtg
 
-    def _extract_espn(self, table: Tag) -> Optional[float]:
+    def _extract_espn(self, table: Tag) -> float | None:
         rtg = None
         espn_rtg_row = self._get_tag_with_text(
             search_space=table, tag_name="span", text="espn"
@@ -841,7 +837,7 @@ class DraftBuzzScraper:
         playwright: Playwright,
         profile_root_dir: Path = None,
         fetcher: PageFetcher = None,
-            headless: bool = True
+        headless: bool = True,
     ):
         self.profile_root_dir = profile_root_dir
         self.base_url = "https://www.nfldraftbuzz.com"
@@ -944,7 +940,7 @@ class ProspectProfileListExtractor:
         )
         return data_hrefs
 
-    def extract_prospect_urls_for_position(self, pos: str) -> List[str]:
+    def extract_prospect_urls_for_position(self, pos: str) -> list[str]:
         all_profiles = []
 
         path = f"/positions/{pos}/1/2026"
