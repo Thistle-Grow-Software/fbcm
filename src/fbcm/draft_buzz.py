@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 from collections import defaultdict
@@ -37,6 +38,8 @@ from fbcm.models import (
     TackleStats,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class PageFetcher:
     """Handles fetching web pages using Playwright browser automation."""
@@ -73,7 +76,7 @@ class PageFetcher:
     def _ensure_browser_connected(self) -> None:
         """Ensure browser is connected, relaunch if necessary."""
         if not self.browser.is_connected():
-            print("Browser disconnected, relaunching...")
+            logger.warning("Browser disconnected, relaunching...")
             self.browser = self._launch_browser()
 
     def fetch(
@@ -99,7 +102,7 @@ class PageFetcher:
         self._ensure_browser_connected()
         page = self.browser.new_page()
         try:
-            print(f"Navigating to: {url}")
+            logger.info(f"Navigating to: {url}")
             page.goto(url=url)
             return BeautifulSoup(page.content(), "lxml")
         finally:
@@ -110,15 +113,15 @@ class PageFetcher:
     ) -> tuple[str, bytes | None, str]:
         """Internal method to fetch a page. May raise PlaywrightError."""
         self._ensure_browser_connected()
-        print("Opening new page...")
+        logger.debug("Opening new page...")
 
         page = self.browser.new_page()
         try:
-            print(f"Navigating to: {url}")
+            logger.info(f"Navigating to: {url}")
             try:
                 page.goto(url)
             except PlaywrightTimeout:
-                print("Page load timeout, continuing with partial content...")
+                logger.warning("Page load timeout, continuing with partial content...")
 
             text_content = page.evaluate("() => document.body.innerText")
             if attempt_image_fetch:
@@ -175,7 +178,7 @@ class PageFetcher:
         self, page, image_url: str, base_url: str
     ) -> tuple[bytes | None, str]:
         """Download image from URL."""
-        print(f"Found player image: {image_url[:80]}...")
+        logger.info(f"Found player image: {image_url[:80]}...")
         try:
             image_url = self._make_absolute_url(image_url, base_url)
             response = page.request.get(image_url)
@@ -184,10 +187,10 @@ class PageFetcher:
                 image_type = self._get_image_type(
                     response.headers.get("content-type", "")
                 )
-                print(f"Downloaded image: {len(image_data)} bytes ({image_type})")
+                logger.info(f"Downloaded image: {len(image_data)} bytes ({image_type})")
                 return image_data, image_type
         except Exception as e:
-            print(f"Failed to download image: {e}")
+            logger.error(f"Failed to download image: {e}")
         return None, "jpeg"
 
     @staticmethod
@@ -355,7 +358,9 @@ class ProspectParserSoup:
             case "DL" | "EDGE" | "LB" | "DB":
                 table_div = soup.find(id="DBLBDL-stats")
             case _:
-                print(f"Could not match position {self.position} to any known group.")
+                logger.warning(
+                    f"Could not match position {self.position} to any known group."
+                )
 
         if table_div is not None:
             extracted_stats = self._extract_stats_object(div=table_div)
@@ -491,24 +496,20 @@ class ProspectParserSoup:
 
         season_stats["year"] = season_stats.pop("year").split()[0]
 
-        from pprint import pprint
-
         for fld in ["cmp", "att", "yds", "td", "ints", "sack", "year"]:
             try:
                 season_stats[fld] = int(season_stats[fld] or 0)
             except ValueError as e:
-                print(f"Invalid value for field {fld}: {season_stats[fld]}")
-                print("Full season_stats_dict")
-                pprint(season_stats, indent=4)
+                logger.error(f"Invalid value for field {fld}: {season_stats[fld]}")
+                logger.error(f"Full season_stats_dict: {season_stats}")
                 raise e
 
         for fld in ["cmp_pct", "qb_rtg"]:
             try:
                 season_stats[fld] = float(season_stats[fld] or 0.0)
             except ValueError as e:
-                print(f"Invalid value for field {fld}: {season_stats[fld]}")
-                print("Full season_stats_dict")
-                pprint(season_stats, indent=4)
+                logger.error(f"Invalid value for field {fld}: {season_stats[fld]}")
+                logger.error(f"Full season_stats_dict: {season_stats}")
                 raise e
 
         return season_stats
@@ -838,19 +839,19 @@ class DraftBuzzScraper:
     def scrape_from_url(self, url: str, position: str) -> ProspectDataSoup:
         """Scrape prospect data from a URL."""
         self.current_prospect_data = None
-        print("Parsing prospect data...")
+        logger.info("Parsing prospect data...")
         full_url = f"{self.base_url}{url}"
         base_soup = self.fetcher.fetch_soup(url=full_url)
         self.parser = ProspectParserSoup(soup=base_soup, position=position)
         prospect_data = self.parser.parse()
 
-        print("Fetching stats page")
+        logger.info("Fetching stats page")
         slug_parts = url.split("/")
         player_stats_slug = f"/{slug_parts[1]}/stats/{slug_parts[-1]}"
         stats_full_url = f"{self.base_url}{player_stats_slug}"
 
         stats_soup = self.fetcher.fetch_soup(url=stats_full_url)
-        print("Attempting to parse stats")
+        logger.info("Attempting to parse stats")
         stats_data = self.parser.parse_stats(soup=stats_soup)
         prospect_data.stats = stats_data
 
@@ -858,8 +859,12 @@ class DraftBuzzScraper:
         return prospect_data
 
     def save_player_photo_to_disk(self):
-        print(f"Saving photo for {self.current_prospect_data.basic_info.full_name}")
-        print(f"Fetching image from {self.current_prospect_data.basic_info.photo_url}")
+        logger.info(
+            f"Saving photo for {self.current_prospect_data.basic_info.full_name}"
+        )
+        logger.info(
+            f"Fetching image from {self.current_prospect_data.basic_info.photo_url}"
+        )
 
         response = requests.get(self.current_prospect_data.basic_info.photo_url)
         response.raise_for_status()
@@ -867,19 +872,21 @@ class DraftBuzzScraper:
 
         output_path = Path(self.profile_root_dir, "player_photos", file_name)
         output_path.write_bytes(response.content)
-        print(f"Wrote image to disk at {output_path}")
+        logger.info(f"Wrote image to disk at {output_path}")
 
     def print_summary(self, data: ProspectDataSoup) -> None:
-        """Print summary of extracted data."""
-        print("\nExtracted data summary:")
-        print(f"  Name: {data.basic_info.full_name}")
-        print(f"  Position: {data.basic_info.position}")
-        print(f"  School: {data.basic_info.college}")
-        print(f"  Rating: {data.ratings.overall_rating}/100")
-        print(f"  Draft Projection: {data.ratings.draft_projection}")
-        print(f"  Strengths: {len(data.scouting_report.strengths)} items")
-        print(f"  Weaknesses: {len(data.scouting_report.weaknesses)} items")
-        print(f"  Image: {'Yes' if data.basic_info.photo_path.exists() else 'No'}")
+        """Log summary of extracted data."""
+        logger.info("Extracted data summary:")
+        logger.info(f"  Name: {data.basic_info.full_name}")
+        logger.info(f"  Position: {data.basic_info.position}")
+        logger.info(f"  School: {data.basic_info.college}")
+        logger.info(f"  Rating: {data.ratings.overall_rating}/100")
+        logger.info(f"  Draft Projection: {data.ratings.draft_projection}")
+        logger.info(f"  Strengths: {len(data.scouting_report.strengths)} items")
+        logger.info(f"  Weaknesses: {len(data.scouting_report.weaknesses)} items")
+        logger.info(
+            f"  Image: {'Yes' if data.basic_info.photo_path.exists() else 'No'}"
+        )
 
 
 class ProspectProfileListExtractor:
@@ -900,7 +907,7 @@ class ProspectProfileListExtractor:
         return self.playwright.firefox.launch(headless=False)
 
     def extract_prospect_hrefs(self, page):
-        print(f"Extracting prospect hrefs for {page.url}")
+        logger.info(f"Extracting prospect hrefs for {page.url}")
         rows = page.locator("#positionRankTable tbody tr")
         data_hrefs = rows.evaluate_all(
             "rows => rows.map(row => row.getAttribute('data-href'))"
