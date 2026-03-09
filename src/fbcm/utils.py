@@ -37,6 +37,28 @@ COMMON_OPTION_MAPPINGS = {
 }
 
 
+def generate_episode_metadata_xml(
+    title: str, season: str | int, episode: str | int, aired: str
+) -> str:
+    """
+    Generate XML metadata for an episode in the format expected by Jellyfin/Plex.
+
+    :param title: The episode title to display.
+    :param season: The season number/year.
+    :param episode: The episode number.
+    :param aired: The air date string (e.g. "2025-09-14").
+    :return: An XML string containing episodedetails.
+    """
+    return (
+        f"<episodedetails>\n"
+        f"\t<title>{title}</title>\n"
+        f"\t<season>{season}</season>\n"
+        f"\t<episode>{episode}</episode>\n"
+        f"\t<aired>{aired}</aired>\n"
+        f"</episodedetails>"
+    )
+
+
 def find_config(explicit_path: str | None = None) -> Path | None:
     """
     Find the config file using auto-discovery or explicit path.

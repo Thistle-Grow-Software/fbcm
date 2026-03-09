@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .constants import ABBREVIATION_MAP, CONCURRENT_FRAGMENTS, THROTTLED_RATE_LIMIT
+from .utils import generate_episode_metadata_xml
 
 
 def convert_nfl_playoff_name_to_int(year: int, week_name: str) -> int:
@@ -581,7 +582,6 @@ class MetaDataCreator:
         :return: The name to be stored in metadata.
         :rtype: str
         """
-        # TODO: There are multiple versions of this method. Consolidate
         # file_stem will be something like "2024_Wk01_PIT_at_ATL"
         base_name = file_stem.split(" - ")[-1]
         parts = base_name.split("_")
@@ -615,7 +615,6 @@ class MetaDataCreator:
         return f"{year} Week {week_repr} - {team_one_city} {parts[3]} {team_two_city}"
 
     def construct_metadata_xml_for_game(self, game_stem: str) -> str:
-        # TODO: Consolidate this with the same method from NFLWeeklyDownloader
         title = self._create_title_string(game_stem)
 
         year, episode_num = [
@@ -623,13 +622,11 @@ class MetaDataCreator:
         ]
         aired = self.game_dates[str(year)][episode_num.lstrip("0")]
 
-        return (
-            f"<episodedetails>\n"
-            f"\t<title>{title}</title>\n"
-            f"\t<season>{year}</season>\n"
-            f"\t<episode>{episode_num.lstrip('0')}</episode>\n"
-            f"\t<aired>{aired}</aired>\n"
-            f"</episodedetails>"
+        return generate_episode_metadata_xml(
+            title=title,
+            season=year,
+            episode=episode_num.lstrip("0"),
+            aired=aired,
         )
 
     def create_nfo_for_season(self, year: int, overwrite: bool = False) -> None:
