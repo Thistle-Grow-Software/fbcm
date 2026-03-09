@@ -103,7 +103,6 @@ class NFLShowDownloader:
         }
         self.completed = []
         self.errors = []
-        self.errors = []
         self.completed_seasons = []
         self.pause_time = pause_time
 
