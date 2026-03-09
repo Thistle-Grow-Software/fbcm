@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import random
 import time
@@ -11,6 +12,8 @@ import click
 from .constants import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
 from .utils import apply_config_to_kwargs, find_config, load_config
 
+logger = logging.getLogger(__name__)
+
 
 @click.group()
 @click.option(
@@ -18,9 +21,26 @@ from .utils import apply_config_to_kwargs, find_config, load_config
     type=click.Path(exists=False),
     help="Path to config file. Auto-discovers fbcm.yaml in CWD or ~/.config/ if not specified.",
 )
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable verbose (DEBUG level) logging.",
+)
+@click.option(
+    "--log-file",
+    type=click.Path(),
+    default=None,
+    help="Path to a file where logs should be written in addition to the console.",
+)
 @click.pass_context
-def cli(ctx, config):
+def cli(ctx, config, verbose, log_file):
     """fbcm - Football content manager and archiving tools."""
+    from .logging_config import setup_logging
+
+    level = logging.DEBUG if verbose else logging.INFO
+    setup_logging(level=level, log_file=log_file)
+
     ctx.ensure_object(dict)
     config_path = find_config(config)
     ctx.obj["config"] = load_config(config_path)
@@ -280,9 +300,8 @@ def nfl_games(
             )
             games.extend(wk_games)
 
-        from pprint import pprint
-
-        pprint(games, indent=4)
+        for game in games:
+            logger.info("%s", game)
 
     else:
         for wk in week:
@@ -329,9 +348,9 @@ def extract_draft_profiles(
 
     selected_positions = list(position)
     if not selected_positions:
-        print("No positions selected. Defaulting to all.")
+        logger.info("No positions selected. Defaulting to all.")
         selected_positions = POSITIONS
-    print(f"Position: {selected_positions}")
+    logger.info("Position: %s", selected_positions)
 
     with open(input_file) as infile:
         profile_urls = json.load(infile)
@@ -465,8 +484,9 @@ def update_draft_prospect_urls(ctx):
                     pos=position
                 )
             except TimeoutError:
-                print(
-                    f"Position {position} timed out. Sleeping, then moving on to next position."
+                logger.warning(
+                    "Position %s timed out. Sleeping, then moving on to next position.",
+                    position,
                 )
                 time.sleep(5)
 

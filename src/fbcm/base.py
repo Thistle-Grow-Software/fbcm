@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -6,6 +7,8 @@ from typing import Any
 
 from .constants import ABBREVIATION_MAP, CONCURRENT_FRAGMENTS, THROTTLED_RATE_LIMIT
 from .utils import generate_episode_metadata_xml
+
+logger = logging.getLogger(__name__)
 
 
 def convert_nfl_playoff_name_to_int(year: int, week_name: str) -> int:
@@ -143,7 +146,7 @@ def is_bowl_game(orig_file: str) -> str:
     :rtype: str
     """
     bowl_str = ""
-    print(orig_file)
+    logger.debug(orig_file)
     # TODO: This needs to be generalized.
     for named_game in [
         "SEC Championship ",
@@ -328,7 +331,7 @@ class BaseDownloader:
         :type output_file_name_template: str
         :return:
         """
-        print(f"Downloading files from {input_file.name}")
+        logger.info("Downloading files from %s", input_file.name)
 
         urls = input_file.read_text().splitlines()
         output_template = str(self.destination_dir / output_file_name_template)
@@ -378,8 +381,7 @@ class FileOperationsUtil:
 
     def _log_var(self, name: str, var: Any) -> None:
         """
-        Log (or print) the variable's name, and its string representation
-        # TODO: Change this from print calls to logger invocations
+        Log the variable's name and its string representation.
 
         :param name: (Typically) the name of the object being logged.
         :type name: str
@@ -388,8 +390,8 @@ class FileOperationsUtil:
         """
 
         if self.verbose:
-            print(f"Variable: {name}")
-            print(f"Value: {var}")
+            logger.debug("Variable: %s", name)
+            logger.debug("Value: %s", var)
 
     def _construct_mp4_title(self, file_stem: str) -> str:
         """
@@ -401,7 +403,6 @@ class FileOperationsUtil:
         :return: The pretty string used to display in UIs
         :rtype: str
         """
-        # TODO: Implement an actual logging config to make this nicer
         self._log_var("Base Name", file_stem)
 
         name_parts = file_stem.split("_")
@@ -426,11 +427,11 @@ class FileOperationsUtil:
         :type file_obj: Path
         """
         if self.pretend:
-            print("Pretend flag was passed. Will not save updates.")
+            logger.info("Pretend flag was passed. Will not save updates.")
 
-        print(f"Updating metadata for games in {self.directory_path}")
+        logger.info("Updating metadata for games in %s", self.directory_path)
 
-        print(f"Working on {file_obj.name}")
+        logger.info("Working on %s", file_obj.name)
 
         from mutagen.mp4 import MP4
 
@@ -439,12 +440,14 @@ class FileOperationsUtil:
             audio["\xa9nam"] = self._construct_mp4_title(file_stem=file_obj.stem)
 
             if not self.pretend:
-                print("Saving file.")
+                logger.info("Saving file.")
                 audio.save()
 
-            print(f"Updated title for '{file_obj.name}' to: '{audio['\xa9nam']}'")
+            logger.info(
+                "Updated title for '%s' to: '%s'", file_obj.name, audio["\xa9nam"]
+            )
         except Exception as e:
-            print(f"Error processing '{file_obj.name}': {e}")
+            logger.error("Error processing '%s': %s", file_obj.name, e)
             raise e
 
     def iter_and_update_children(self) -> None:
@@ -487,14 +490,14 @@ class FileOperationsUtil:
                 log_str = f"Would convert {mkv_file} to {output_path}."
                 if delete:
                     log_str += f"\nWould delete {mkv_file} as well."
-                print(log_str)
+                logger.info(log_str)
                 successfully_converted.append(orig_stem)
             else:
-                print(f"Converting {mkv_file} to {output_path}")
+                logger.info("Converting %s to %s", mkv_file, output_path)
                 ffmpeg.run(stream)
                 successfully_converted.append(orig_stem)
                 if delete:
-                    print(f"Deleting {mkv_file}.")
+                    logger.info("Deleting %s.", mkv_file)
                     mkv_file.unlink()
 
         return successfully_converted
@@ -528,10 +531,13 @@ class FileOperationsUtil:
 
                 if self.pretend:
                     if delete_:
-                        print(f"{new_filename} already exists, would be replaced.")
-                    print(
-                        f"Would rename {file_path.name} to {new_filename}."
-                        f" --pretend was passed, so we will not attempt the operation."
+                        logger.info(
+                            "%s already exists, would be replaced.", new_filename
+                        )
+                    logger.info(
+                        "Would rename %s to %s. --pretend was passed, so we will not attempt the operation.",
+                        file_path.name,
+                        new_filename,
                     )
                 else:
                     if delete_ and not replace:
@@ -539,9 +545,9 @@ class FileOperationsUtil:
                             f"File {new_filename} already exists and replace is False"
                         )
 
-                    print(f"Renaming {file_path.name} to {new_file_path.name}")
+                    logger.info("Renaming %s to %s", file_path.name, new_file_path.name)
                     file_path.replace(new_file_path)
-                    print("Success.")
+                    logger.info("Success.")
 
 
 @dataclass
@@ -647,10 +653,10 @@ class MetaDataCreator:
         for game in season_dir.rglob("*.mp4"):
             nfo_file = Path(season_dir, f"{game.stem}.nfo")
             if (not overwrite) and nfo_file.exists():
-                print(f"{nfo_file} already exists and overwrite=False. Skipping")
+                logger.info("%s already exists and overwrite=False. Skipping", nfo_file)
                 continue
 
-            print(f"Creating {nfo_file}")
+            logger.info("Creating %s", nfo_file)
             nfo_file.touch()
             xml_str = self.construct_metadata_xml_for_game(game_stem=game.stem)
             nfo_file.write_text(xml_str)
@@ -675,4 +681,4 @@ class MetaDataCreator:
             new_filename = f"{series_name} - s{year}e{episode_number.zfill(3)} - {f.stem}{f.suffix}"
             new_path = f.with_name(new_filename)
             f.replace(new_path)
-            print(f"Moved {old_name} -> {f.name}")
+            logger.info("Moved %s -> %s", old_name, f.name)

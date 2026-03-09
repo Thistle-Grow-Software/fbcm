@@ -1,9 +1,13 @@
+import logging
+
 import requests
 from bs4 import BeautifulSoup as BS
 
+logger = logging.getLogger(__name__)
+
 
 def extract_links_for_year(year: int):
-    print(f"Extracting links for {year}")
+    logger.info("Extracting links for %d", year)
     url = f"https://www.mcmillenandwife.com/steelers_{year}_season.html"
     response = requests.get(url)
 
@@ -15,7 +19,7 @@ def extract_links_for_year(year: int):
         raw_href = anchor.get("href")
 
         if not raw_href:
-            print("href attribute is falsey. Skipping.")
+            logger.debug("href attribute is falsey. Skipping.")
             continue
 
         to_match = raw_href.strip()

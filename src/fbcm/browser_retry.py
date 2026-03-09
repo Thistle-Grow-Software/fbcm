@@ -1,9 +1,12 @@
+import logging
 import time
 from collections.abc import Callable
 from typing import TypeVar
 
 from playwright.sync_api import Browser, Playwright
 from playwright.sync_api import Error as PlaywrightError
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -72,9 +75,10 @@ class BrowserRetryHandler:
                 if not is_recoverable_browser_error(e):
                     raise
                 last_error = e
-                print(
-                    f"Browser/target closed (attempt {attempt + 1}/{self.max_retries}), "
-                    f"relaunching..."
+                logger.warning(
+                    "Browser/target closed (attempt %d/%d), relaunching...",
+                    attempt + 1,
+                    self.max_retries,
                 )
                 try:
                     browser.close()
