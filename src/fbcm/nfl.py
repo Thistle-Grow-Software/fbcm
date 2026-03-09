@@ -24,6 +24,7 @@ from .constants import (
     MEDIA_BASE_DIR,
     TEAM_FULL_NAMES,
 )
+from .utils import generate_episode_metadata_xml
 
 logger = logging.getLogger(__name__)
 
@@ -297,13 +298,11 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
             f"{game['awayTeam']} {game['divider']} {game['homeTeam']}"
         )
 
-        return (
-            f"<episodedetails>\n"
-            f"\t<title>{title}</title>\n"
-            f"\t<season>{game['season']}</season>\n"
-            f"\t<episode>{ep_num}</episode>\n"
-            f"\t<aired>{game['date_']}</aired>\n"
-            f"</episodedetails>"
+        return generate_episode_metadata_xml(
+            title=title,
+            season=game["season"],
+            episode=ep_num,
+            aired=game["date_"],
         )
 
     def write_metadata_file(self, game: dict, replay_type: str, ep_num: int) -> None:
