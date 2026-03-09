@@ -11,6 +11,7 @@ from playwright.sync_api import Browser, Playwright
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
+from fbcm.browser_retry import BrowserRetryHandler
 from fbcm.constants import POSITION_TO_GROUP_MAP
 from fbcm.models import (
     BasicInfo,
@@ -59,6 +60,11 @@ class PageFetcher:
         self.playwright = playwright
         self.headless = headless
         self.browser = self._launch_browser()
+        self._retry_handler = BrowserRetryHandler(
+            playwright=playwright,
+            launch_browser=self._launch_browser,
+            max_retries=self.MAX_RETRIES,
+        )
 
     def _launch_browser(self) -> Browser:
         """Launch a new browser instance."""
@@ -83,31 +89,11 @@ class PageFetcher:
         Returns:
             Tuple of (page_text, image_bytes, image_type).
         """
-        last_error = None
-
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                return self._fetch_with_page(url, attempt_image_fetch)
-            except PlaywrightError as e:
-                last_error = e
-                error_msg = str(e).lower()
-                if (
-                    "target closed" in error_msg
-                    or "browser has been closed" in error_msg
-                ):
-                    print(
-                        f"Browser/target closed (attempt {attempt + 1}/{self.MAX_RETRIES}), relaunching..."
-                    )
-                    try:
-                        self.browser.close()
-                    except Exception:
-                        pass  # Browser may already be closed
-                    self.browser = self._launch_browser()
-                    time.sleep(1)  # Brief pause before retry
-                else:
-                    raise  # Re-raise if it's a different Playwright error
-
-        raise last_error  # All retries exhausted
+        result, self.browser = self._retry_handler.execute(
+            operation=lambda browser: self._fetch_with_page(url, attempt_image_fetch),
+            browser=self.browser,
+        )
+        return result
 
     def fetch_soup(self, url) -> BeautifulSoup:
         self._ensure_browser_connected()
@@ -903,34 +889,15 @@ class ProspectProfileListExtractor:
         self.playwright = playwright
         self.browser = self._launch_browser()
         self.base_url = "https://www.nfldraftbuzz.com"
+        self._retry_handler = BrowserRetryHandler(
+            playwright=playwright,
+            launch_browser=self._launch_browser,
+            max_retries=self.MAX_RETRIES,
+        )
 
     def _launch_browser(self) -> Browser:
         """Launch a new browser instance."""
         return self.playwright.firefox.launch(headless=False)
-
-    def _ensure_browser_connected(self) -> None:
-        """Ensure browser is connected, relaunch if necessary."""
-        if not self.browser.is_connected():
-            print("Browser disconnected, relaunching...")
-            self.browser = self._launch_browser()
-
-    def _navigate_with_retry(self, page, url: str) -> None:
-        """Navigate to URL with retry logic for browser crashes."""
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                page.goto(url)
-                return
-            except PlaywrightError as e:
-                error_msg = str(e).lower()
-                if (
-                    "target closed" in error_msg
-                    or "browser has been closed" in error_msg
-                ):
-                    print(
-                        f"Browser/target closed during navigation (attempt {attempt + 1}/{self.MAX_RETRIES})"
-                    )
-                    raise  # Let caller handle browser relaunch
-                raise
 
     def extract_prospect_hrefs(self, page):
         print(f"Extracting prospect hrefs for {page.url}")
@@ -966,29 +933,16 @@ class ProspectProfileListExtractor:
 
     def _create_page_with_retry(self, url: str):
         """Create a new page and navigate to URL with retry on browser crash."""
-        last_error = None
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                self._ensure_browser_connected()
-                page = self.browser.new_page()
-                page.goto(url, timeout=0)
-                return page
-            except PlaywrightError as e:
-                last_error = e
-                error_msg = str(e).lower()
-                if (
-                    "target closed" in error_msg
-                    or "browser has been closed" in error_msg
-                ):
-                    print(
-                        f"Browser/target closed (attempt {attempt + 1}/{self.MAX_RETRIES}), relaunching..."
-                    )
-                    try:
-                        self.browser.close()
-                    except Exception:
-                        pass
-                    self.browser = self._launch_browser()
-                    time.sleep(1)
-                else:
-                    raise
-        raise last_error
+
+        def _open_page(browser: Browser):
+            if not browser.is_connected():
+                raise PlaywrightError("browser has been closed")
+            page = browser.new_page()
+            page.goto(url, timeout=0)
+            return page
+
+        result, self.browser = self._retry_handler.execute(
+            operation=_open_page,
+            browser=self.browser,
+        )
+        return result
