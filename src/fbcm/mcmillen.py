@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup as BS
 logger = logging.getLogger(__name__)
 
 
-def extract_links_for_year(year: int):
+def extract_links_for_year(year: int) -> set[str]:
     logger.info(f"Extracting links for {year}")
     url = f"https://www.mcmillenandwife.com/steelers_{year}_season.html"
     response = requests.get(url)

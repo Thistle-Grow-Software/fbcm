@@ -42,7 +42,9 @@ logger = logging.getLogger(__name__)
     help="Path to a file where logs should be written in addition to the console.",
 )
 @click.pass_context
-def cli(ctx, config, verbose, log_file):
+def cli(
+    ctx: click.Context, config: str | None, verbose: bool, log_file: str | None
+) -> None:
     """fbcm - Football content manager and archiving tools."""
     from .logging_config import setup_logging
 
@@ -69,7 +71,12 @@ def cli(ctx, config, verbose, log_file):
     help="If authentication is required, you can provide a cookies file via this flag. The file must follow the Netscape format.",
 )
 @click.pass_context
-def download_list(ctx, input_file, output_directory, cookies_file: Path = None):
+def download_list(
+    ctx: click.Context,
+    input_file: str,
+    output_directory: str | None,
+    cookies_file: Path | None = None,
+) -> None:
     """
     Download a list of URLS provided via INPUT_FILE.
 
@@ -104,7 +111,12 @@ def download_list(ctx, input_file, output_directory, cookies_file: Path = None):
     help="A .txt file containing NFL authentication cookies following the Netscape format.",
 )
 @click.pass_context
-def nfl_show(ctx, input_file, output_directory, cookies_file):
+def nfl_show(
+    ctx: click.Context,
+    input_file: str,
+    output_directory: str | None,
+    cookies_file: str | None,
+) -> None:
     """
     Download episodes from shows available on NFL Plus.
 
@@ -187,7 +199,7 @@ def nfl_show(ctx, input_file, output_directory, cookies_file):
 )
 @click.pass_context
 def nfl_games(
-    ctx,
+    ctx: click.Context,
     output_directory: str,
     cookies_file: str,
     credentials_file: str,
@@ -201,7 +213,7 @@ def nfl_games(
     replay_type: tuple[str],
     start_ep: int,
     list_only: bool,
-):
+) -> None:
     # TODO: Ensure jellyfin isn't running..it borks the post processing
     """
     Download NFL game replays of the specified SEASON and WEEK
@@ -332,11 +344,11 @@ def nfl_games(
 )
 @click.pass_context
 def extract_draft_profiles(
-    ctx,
+    ctx: click.Context,
     output_directory: str,
     position: str,
     input_file: str,
-):
+) -> None:
     from playwright._impl._errors import TimeoutError
     from playwright.sync_api import sync_playwright
 
@@ -419,10 +431,10 @@ def extract_draft_profiles(
 )
 @click.pass_context
 def gen_prospect_word_docs(
-    ctx,
+    ctx: click.Context,
     output_directory: str,
     position: str,
-):
+) -> None:
     from .docx.word_gen import WordDocGenerator
     from .models import ProspectDataSoup
 
@@ -464,7 +476,7 @@ def gen_prospect_word_docs(
 
 @cli.command()
 @click.pass_context
-def update_draft_prospect_urls(ctx):
+def update_draft_prospect_urls(ctx: click.Context) -> None:
     from playwright._impl._errors import TimeoutError
     from playwright.sync_api import sync_playwright
 
@@ -489,7 +501,7 @@ def update_draft_prospect_urls(ctx):
         json.dump(profile_lists, outfile, indent=4)
 
 
-def dump_currently_completed(position, data, completed_list):
+def dump_currently_completed(position: str, data: dict, completed_list: list) -> None:
     rn = datetime.now()
     suffix = f"{rn.hour}_{rn.minute}_{rn.second}"
     fname = f"{position}_redo_{suffix}.json"
@@ -503,7 +515,7 @@ def dump_currently_completed(position, data, completed_list):
 
 @cli.command()
 @click.pass_context
-def draft_sandbox(ctx):
+def draft_sandbox(ctx: click.Context) -> None:
     from .docx.word_gen import WordDocGenerator
     from .models import ProspectDataSoup
 
@@ -550,13 +562,13 @@ def draft_sandbox(ctx):
 )
 @click.pass_context
 def convert_format(
-    ctx,
+    ctx: click.Context,
     directory: str,
     pretend: bool,
     orig_format: str,
     new_format: str,
     delete: bool,
-):
+) -> None:
     """
     Convert mkv files stored in DIRECTORY to mp4 files. Other formats will be added eventually.
 
@@ -598,13 +610,13 @@ def convert_format(
 )
 @click.pass_context
 def generate_nfo_files(
-    ctx,
+    ctx: click.Context,
     directory: str,
     season: int,
     dates: str,
     league: str,
     overwrite: bool,
-):
+) -> None:
     """
     Construct .nfo files for games of the given league + season combo.
 

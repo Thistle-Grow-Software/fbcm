@@ -8,7 +8,7 @@ from .utils import generate_episode_metadata_xml
 logger = logging.getLogger(__name__)
 
 
-def convert_nfl_playoff_name_to_int(year: int, week_name: str) -> int:
+def convert_nfl_playoff_name_to_int(year: int, week_name: str) -> int | None:
     """
     Given a season and week name, determine the week number of the game.
 
@@ -64,7 +64,7 @@ def convert_nfl_playoff_name_to_int(year: int, week_name: str) -> int:
     return num
 
 
-def convert_ufl_playoff_name_to_int(year: int, week_name: str) -> int:
+def convert_ufl_playoff_name_to_int(year: int, week_name: str) -> int | None:
     """
     Given a UFL season and a week name, determine the week number of the game.
 
@@ -80,7 +80,7 @@ def convert_ufl_playoff_name_to_int(year: int, week_name: str) -> int:
     return num
 
 
-def convert_cfl_playoff_name_to_int(year: int, week_name: str) -> int:
+def convert_cfl_playoff_name_to_int(year: int, week_name: str) -> int | None:
     """
     Given a CFL season and a week name, determine the week number of the game.
 
@@ -97,8 +97,8 @@ def convert_cfl_playoff_name_to_int(year: int, week_name: str) -> int:
 
 
 def get_week_int_as_string(
-    week: str, year: int = None, league: str = "nfl"
-) -> int | str:
+    week: str, year: int | None = None, league: str = "nfl"
+) -> str:
     """
     Given a week's name and a season, determine the week number of the game.
 

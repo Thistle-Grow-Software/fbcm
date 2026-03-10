@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup, Tag
-from playwright.sync_api import Browser, Playwright
+from playwright.sync_api import Browser, Page, Playwright
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
@@ -18,7 +18,7 @@ from fbcm.constants import (
     NFL_DRAFT_BUZZ_BASE_URL,
     PAGE_NAVIGATION_SLEEP_RANGE,
 )
-from fbcm.models import Comparison, ProspectDataSoup
+from fbcm.models import Comparison, ProspectDataSoup, Stats
 from fbcm.parsers import (
     BasicInfoParser,
     RatingExtractor,
@@ -85,7 +85,7 @@ class PageFetcher:
         )
         return result
 
-    def fetch_soup(self, url) -> BeautifulSoup:
+    def fetch_soup(self, url: str) -> BeautifulSoup:
         self._ensure_browser_connected()
         page = self.browser.new_page()
         try:
@@ -121,7 +121,9 @@ class PageFetcher:
         finally:
             page.close()
 
-    def _find_and_download_image(self, page, base_url: str) -> tuple[bytes | None, str]:
+    def _find_and_download_image(
+        self, page: Page, base_url: str
+    ) -> tuple[bytes | None, str]:
         """Find and download the player image from the page."""
         image_url = self._find_image_url(page)
 
@@ -133,13 +135,13 @@ class PageFetcher:
 
         return None, "jpeg"
 
-    def _find_image_url(self, page) -> str | None:
+    def _find_image_url(self, page: Page) -> str | None:
         """Try to find image URL using predefined selectors."""
         img = page.locator("figure.player-info__photo img")
         src = img.get_attribute("src")
         return self._make_absolute_url(url=src, base_url=self.base_url)
 
-    def _find_any_large_image(self, page) -> str | None:
+    def _find_any_large_image(self, page: Page) -> str | None:
         """Fallback: try to find any large player image."""
         try:
             images = page.query_selector_all("img")
@@ -162,7 +164,7 @@ class PageFetcher:
         return any(pattern in src_lower for pattern in self.SKIP_IMAGE_PATTERNS)
 
     def _download_image(
-        self, page, image_url: str, base_url: str
+        self, page: Page, image_url: str, base_url: str
     ) -> tuple[bytes | None, str]:
         """Download image from URL."""
         logger.info(f"Found player image: {image_url[:80]}...")
@@ -181,7 +183,7 @@ class PageFetcher:
         return None, "jpeg"
 
     @staticmethod
-    def _make_absolute_url(url: str, base_url: str = None) -> str:
+    def _make_absolute_url(url: str, base_url: str | None = None) -> str:
         """Convert relative URL to absolute."""
         if url.startswith("//"):
             return "https:" + url
@@ -234,7 +236,7 @@ class ProspectParser:
             stats=None,
         )
 
-    def parse_stats(self, soup: BeautifulSoup):
+    def parse_stats(self, soup: BeautifulSoup) -> Stats | None:
         stats_parser = StatsParser(soup=soup, position=self.position)
         return stats_parser.parse()
 
@@ -254,7 +256,7 @@ class ProspectParser:
 
         return comparisons
 
-    def _extract_ratings_comps_tables(self):
+    def _extract_ratings_comps_tables(self) -> tuple[Tag, Tag | None]:
         ratings_and_rankings = [
             table
             for table in self.soup.find_all("table", class_="starRatingTable")
@@ -275,8 +277,8 @@ class DraftBuzzScraper:
     def __init__(
         self,
         playwright: Playwright,
-        profile_root_dir: Path = None,
-        fetcher: PageFetcher = None,
+        profile_root_dir: Path | None = None,
+        fetcher: PageFetcher | None = None,
         headless: bool = True,
     ):
         self.profile_root_dir = profile_root_dir
@@ -285,7 +287,7 @@ class DraftBuzzScraper:
             playwright=playwright, base_url=self.base_url, headless=headless
         )
         self.parser = None
-        self.position_rankings_used = defaultdict(list)
+        self.position_rankings_used: defaultdict[str, list[str]] = defaultdict(list)
 
         self.current_prospect_data: ProspectDataSoup | None = None
 
@@ -311,7 +313,7 @@ class DraftBuzzScraper:
         self.current_prospect_data = prospect_data
         return prospect_data
 
-    def save_player_photo_to_disk(self):
+    def save_player_photo_to_disk(self) -> None:
         logger.info(
             f"Saving photo for {self.current_prospect_data.basic_info.full_name}"
         )
@@ -357,7 +359,7 @@ class ProspectProfileListExtractor:
         """Launch a new browser instance."""
         return self.playwright.firefox.launch(headless=False)
 
-    def extract_prospect_hrefs(self, page):
+    def extract_prospect_hrefs(self, page: Page) -> list[str]:
         logger.info(f"Extracting prospect hrefs for {page.url}")
         rows = page.locator("#positionRankTable tbody tr")
         data_hrefs = rows.evaluate_all(
@@ -389,10 +391,10 @@ class ProspectProfileListExtractor:
         page.close()
         return all_profiles
 
-    def _create_page_with_retry(self, url: str):
+    def _create_page_with_retry(self, url: str) -> Page:
         """Create a new page and navigate to URL with retry on browser crash."""
 
-        def _open_page(browser: Browser):
+        def _open_page(browser: Browser) -> Page:
             if not browser.is_connected():
                 raise PlaywrightError("browser has been closed")
             page = browser.new_page()

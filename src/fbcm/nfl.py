@@ -300,9 +300,9 @@ class NFLShowDownloader:
                 )
             ],
         }
-        self.completed = []
-        self.errors = []
-        self.completed_seasons = []
+        self.completed: list[str] = []
+        self.errors: list[str] = []
+        self.completed_seasons: list[int] = []
         self.pause_time = pause_time
 
     def download_episodes(self) -> None:
