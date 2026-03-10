@@ -11,6 +11,9 @@ from yt_dlp import YoutubeDL
 if TYPE_CHECKING:
     from griddy.nfl.models import WeeklyGameDetail
 
+# noinspection PyUnresolvedReferences
+from yt_dlp.extractor.nfl import NFLBaseIE
+
 from .base import (
     BaseDownloader,
     get_max_episode_number_in_dir,
@@ -379,7 +382,7 @@ class NFLShowDownloader:
             time.sleep(self.pause_time)
 
 
-class NFLWeeklyDownloader(BaseDownloader):
+class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
     """
     A YoutubeDL wrapper that leverages the NFL tools included with yt-dlp.
 

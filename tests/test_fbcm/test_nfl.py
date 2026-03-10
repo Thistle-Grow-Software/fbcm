@@ -456,8 +456,8 @@ class TestNFLWeeklyDownloaderComposition:
         )
 
     @patch("griddy.nfl.GriddyNFL")
-    def test_no_longer_inherits_from_nfl_base_ie(self, mock_griddy_cls, tmp_path):
-        """Verify NFLBaseIE is no longer in the MRO."""
+    def test_inherits_from_nfl_base_ie(self, mock_griddy_cls, tmp_path):
+        """Verify NFLBaseIE is still in the MRO for yt-dlp auth handling."""
         nwd = NFLWeeklyDownloader(
             firefox_profile_path="/fake/profile",
             destination_dir=tmp_path,
@@ -465,7 +465,7 @@ class TestNFLWeeklyDownloaderComposition:
         )
 
         class_names = [cls.__name__ for cls in type(nwd).__mro__]
-        assert "NFLBaseIE" not in class_names
+        assert "NFLBaseIE" in class_names
 
     @patch("griddy.nfl.GriddyNFL")
     def test_still_inherits_from_base_downloader(self, mock_griddy_cls, tmp_path):
