@@ -72,18 +72,18 @@ class StatsParser(ParserBase):
         for fld in ["cmp", "att", "yds", "td", "ints", "sack", "year"]:
             try:
                 season_stats[fld] = int(season_stats[fld] or 0)
-            except ValueError as e:
+            except ValueError:
                 logger.error(f"Invalid value for field {fld}: {season_stats[fld]}")
                 logger.error(f"Full season_stats_dict: {season_stats}")
-                raise e
+                raise
 
         for fld in ["cmp_pct", "qb_rtg"]:
             try:
                 season_stats[fld] = float(season_stats[fld] or 0.0)
-            except ValueError as e:
+            except ValueError:
                 logger.error(f"Invalid value for field {fld}: {season_stats[fld]}")
                 logger.error(f"Full season_stats_dict: {season_stats}")
-                raise e
+                raise
 
         return season_stats
 

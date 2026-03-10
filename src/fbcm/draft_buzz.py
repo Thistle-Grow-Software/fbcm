@@ -148,8 +148,8 @@ class PageFetcher:
                         or "player" in src.lower()
                     ):
                         return src
-        except Exception:
-            pass
+        except PlaywrightError:
+            logger.warning("Failed to query images from page, skipping image search")
         return None
 
     def _should_skip_image(self, src: str) -> bool:
@@ -172,7 +172,7 @@ class PageFetcher:
                 )
                 logger.info(f"Downloaded image: {len(image_data)} bytes ({image_type})")
                 return image_data, image_type
-        except Exception as e:
+        except (PlaywrightError, PlaywrightTimeout) as e:
             logger.error(f"Failed to download image: {e}")
         return None, "jpeg"
 

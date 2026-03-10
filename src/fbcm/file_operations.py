@@ -130,9 +130,9 @@ class FileOperationsUtil:
                 audio.save()
 
             logger.info(f"Updated title for '{file_obj.name}' to: '{audio['\xa9nam']}'")
-        except Exception as e:
+        except (KeyError, ValueError, OSError) as e:
             logger.error(f"Error processing '{file_obj.name}': {e}")
-            raise e
+            raise
 
     def iter_and_update_children(self) -> None:
         """
