@@ -3,7 +3,9 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from fbcm.config import _resolve, _resolve_list
+import pytest
+
+from fbcm.config import LoggingConfig, _resolve, _resolve_list
 from fbcm.utils import find_config, load_config
 
 
@@ -196,3 +198,129 @@ class TestResolveListFunction:
     def test_none_value_in_command_config(self):
         result = _resolve_list("week", None, {"week": None}, {})
         assert result is None
+
+
+class TestLoggingConfigDefaults:
+    def test_default_values(self):
+        cfg = LoggingConfig()
+        assert cfg.level == "INFO"
+        assert cfg.log_file is None
+        assert cfg.log_format == "text"
+        assert cfg.output == "console"
+        assert cfg.max_file_size == 10_485_760
+        assert cfg.backup_count == 5
+        assert cfg.module_levels == {}
+
+    def test_numeric_level_property(self):
+        import logging
+
+        cfg = LoggingConfig(level="DEBUG")
+        assert cfg.numeric_level == logging.DEBUG
+
+        cfg = LoggingConfig(level="WARNING")
+        assert cfg.numeric_level == logging.WARNING
+
+
+class TestLoggingConfigValidation:
+    def test_invalid_level_raises(self):
+        with pytest.raises(ValueError, match="Invalid log level"):
+            LoggingConfig(level="VERBOSE")
+
+    def test_invalid_format_raises(self):
+        with pytest.raises(ValueError, match="Invalid log format"):
+            LoggingConfig(log_format="xml")
+
+    def test_invalid_output_raises(self):
+        with pytest.raises(ValueError, match="Invalid log output"):
+            LoggingConfig(output="syslog")
+
+    def test_invalid_module_level_raises(self):
+        with pytest.raises(ValueError, match="Invalid log level.*for module"):
+            LoggingConfig(module_levels={"nfl": "VERBOSE"})
+
+    def test_file_output_requires_log_file(self):
+        with pytest.raises(ValueError, match="log_file must be specified"):
+            LoggingConfig(output="file")
+
+    def test_both_output_requires_log_file(self):
+        with pytest.raises(ValueError, match="log_file must be specified"):
+            LoggingConfig(output="both")
+
+    def test_level_normalized_to_uppercase(self):
+        cfg = LoggingConfig(level="debug")
+        assert cfg.level == "DEBUG"
+
+    def test_format_normalized_to_lowercase(self):
+        cfg = LoggingConfig(log_format="JSON")
+        assert cfg.log_format == "json"
+
+    def test_output_normalized_to_lowercase(self):
+        cfg = LoggingConfig(output="CONSOLE")
+        assert cfg.output == "console"
+
+    def test_module_levels_normalized_to_uppercase(self):
+        cfg = LoggingConfig(module_levels={"nfl": "debug", "base": "warning"})
+        assert cfg.module_levels["nfl"] == "DEBUG"
+        assert cfg.module_levels["base"] == "WARNING"
+
+
+class TestLoggingConfigFromConfig:
+    def test_empty_config_returns_defaults(self):
+        cfg = LoggingConfig.from_config({})
+        assert cfg.level == "INFO"
+        assert cfg.log_file is None
+        assert cfg.log_format == "text"
+        assert cfg.output == "console"
+
+    def test_reads_logging_section(self, tmp_path):
+        log_file = str(tmp_path / "test.log")
+        config = {
+            "logging": {
+                "level": "WARNING",
+                "log_file": log_file,
+                "log_format": "json",
+                "output": "both",
+                "max_file_size": 5_000_000,
+                "backup_count": 3,
+                "module_levels": {"nfl": "DEBUG"},
+            }
+        }
+        cfg = LoggingConfig.from_config(config)
+
+        assert cfg.level == "WARNING"
+        assert cfg.log_file == log_file
+        assert cfg.log_format == "json"
+        assert cfg.output == "both"
+        assert cfg.max_file_size == 5_000_000
+        assert cfg.backup_count == 3
+        assert cfg.module_levels == {"nfl": "DEBUG"}
+
+    def test_cli_verbose_overrides_level(self):
+        config = {"logging": {"level": "WARNING"}}
+        cfg = LoggingConfig.from_config(config, cli_verbose=True)
+        assert cfg.level == "DEBUG"
+
+    def test_cli_log_file_overrides_config(self, tmp_path):
+        cli_log = str(tmp_path / "cli.log")
+        config_log = str(tmp_path / "config.log")
+        config = {"logging": {"log_file": config_log, "output": "both"}}
+        cfg = LoggingConfig.from_config(config, cli_log_file=cli_log)
+        assert cfg.log_file == cli_log
+
+    def test_cli_log_file_upgrades_output_to_both(self, tmp_path):
+        cli_log = str(tmp_path / "cli.log")
+        cfg = LoggingConfig.from_config({}, cli_log_file=cli_log)
+        assert cfg.output == "both"
+        assert cfg.log_file == cli_log
+
+    def test_none_logging_section_returns_defaults(self):
+        config = {"logging": None}
+        cfg = LoggingConfig.from_config(config)
+        assert cfg.level == "INFO"
+
+    def test_partial_logging_section(self):
+        config = {"logging": {"level": "ERROR"}}
+        cfg = LoggingConfig.from_config(config)
+        assert cfg.level == "ERROR"
+        assert cfg.log_format == "text"
+        assert cfg.output == "console"
