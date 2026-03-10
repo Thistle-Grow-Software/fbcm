@@ -10,10 +10,12 @@ OUTPUT_FORMATS = {
 MEDIA_BASE_DIR = os.getenv("MEDIA_BASE_DIR")
 CONCURRENT_FRAGMENTS = os.getenv("CONCURRENT_FRAGMENTS", 1)
 THROTTLED_RATE_LIMIT = os.getenv("THROTTLED_RATE_LIMIT", 1000000)
-# TODO: Think harder about this name?
 PHOTO_BASE_DIR = os.getenv(
     "PHOTO_BASE_DIR", "/mnt/e/FootballGames/automation/output_data/player_photos"
 )
+
+# --- Font defaults ---
+RATING_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # --- URLs ---
 NFL_REPLAY_BASE_URL = "https://www.nfl.com/plus/games/"

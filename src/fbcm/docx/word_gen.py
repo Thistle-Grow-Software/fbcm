@@ -12,7 +12,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 from PIL import Image, ImageDraw, ImageFont
 
-from ..constants import POSITION_STATS
+from ..constants import POSITION_STATS, RATING_FONT
 from ..models import ColorScheme, ProspectDataSoup
 
 logger = logging.getLogger(__name__)
@@ -146,9 +146,7 @@ def create_rating_ring(
     )
 
     try:
-        font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size // 4
-        )
+        font = ImageFont.truetype(RATING_FONT, size // 4)
     except OSError as e:
         logger.debug(f"Failed to load TrueType font, falling back to default: {e}")
         font = ImageFont.load_default()
@@ -364,10 +362,7 @@ class WordDocGenerator:
         )
 
         try:
-            # TODO: Parameterize the fontpath here
-            font = ImageFont.truetype(
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size // 4
-            )
+            font = ImageFont.truetype(RATING_FONT)
         except Exception:
             font = ImageFont.load_default()
 
