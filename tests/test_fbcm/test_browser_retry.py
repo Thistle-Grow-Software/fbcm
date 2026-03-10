@@ -101,10 +101,10 @@ class TestBrowserRetryHandler:
         assert launch_browser.call_count == 2
 
     @patch("fbcm.browser_retry.time.sleep")
-    def test_browser_close_failure_is_ignored(self, mock_sleep):
+    def test_browser_close_playwright_error_is_handled(self, mock_sleep):
         handler, launch_browser, new_browser = self._make_handler()
         original_browser = MagicMock()
-        original_browser.close.side_effect = Exception("Already closed")
+        original_browser.close.side_effect = PlaywrightError("Already closed")
 
         operation = MagicMock(side_effect=[PlaywrightError("Target closed"), "ok"])
 
@@ -112,6 +112,30 @@ class TestBrowserRetryHandler:
 
         assert result == "ok"
         assert returned_browser is new_browser
+
+    @patch("fbcm.browser_retry.time.sleep")
+    def test_browser_close_os_error_is_handled(self, mock_sleep):
+        handler, launch_browser, new_browser = self._make_handler()
+        original_browser = MagicMock()
+        original_browser.close.side_effect = OSError("Connection reset")
+
+        operation = MagicMock(side_effect=[PlaywrightError("Target closed"), "ok"])
+
+        result, returned_browser = handler.execute(operation, original_browser)
+
+        assert result == "ok"
+        assert returned_browser is new_browser
+
+    @patch("fbcm.browser_retry.time.sleep")
+    def test_browser_close_unexpected_error_propagates(self, mock_sleep):
+        handler, launch_browser, new_browser = self._make_handler()
+        original_browser = MagicMock()
+        original_browser.close.side_effect = RuntimeError("Unexpected")
+
+        operation = MagicMock(side_effect=[PlaywrightError("Target closed"), "ok"])
+
+        with pytest.raises(RuntimeError, match="Unexpected"):
+            handler.execute(operation, original_browser)
 
     @patch("fbcm.browser_retry.time.sleep")
     def test_custom_retry_delay(self, mock_sleep):

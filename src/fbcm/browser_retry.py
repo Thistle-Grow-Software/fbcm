@@ -81,8 +81,8 @@ class BrowserRetryHandler:
                 )
                 try:
                     browser.close()
-                except Exception:
-                    pass  # Browser may already be closed
+                except (PlaywrightError, OSError) as e:
+                    logger.debug(f"Ignoring error while closing browser: {e}")
                 browser = self.launch_browser()
                 time.sleep(self.retry_delay)
 
