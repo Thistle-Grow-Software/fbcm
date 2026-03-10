@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.11",
     "mypy>=1.15",
     "pytest==9.0.2",
+    "pytest-cov>=6.0",
     "types-PyYAML",
     "types-requests",
     "types-beautifulsoup4",
@@ -38,6 +39,11 @@ fbcm = "fbcm.fbcm:cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = [
+    "--cov=fbcm",
+    "--cov-report=term-missing",
+    "--cov-config=pyproject.toml",
+]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
@@ -54,12 +60,12 @@ packages = ["src/fbcm"]
 index-url = "https://pypi.org/simple"
 
 [[tool.uv.index]]
-name = "codeartifact"
+name = "private-registry"
 url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/"
 explicit = true
 
 [tool.uv.sources]
-griddy = { index = "codeartifact" }
+griddy = { index = "private-registry" }
 
 [tool.ruff]
 line-length = 88
