@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Workflow
+Always run the full test suite after implementation changes and before committing. Do not wait to be asked.
+
+## Standard Jira Ticket Workflow
+When implementing a Jira ticket, follow this full cycle: 1) Read ticket, 2) Implement changes, 3) Write/update tests, 4) Run tests and fix failures, 5) Run formatting (ruff), 6) Commit, 7) Open PR, 8) Comment on Jira ticket.
+
+## Refactoring Checklist
+When making changes across multiple files, ensure ALL references are updated — including async test files, CI configs, and fixture files. Check for usages with grep before considering a refactor complete.
+
+## Code Style
+- Use f-strings for all Python string formatting, including in logging calls. Do not use %s-style or .format() interpolation.
+- Python except clauses catching multiple exceptions must use tuple syntax: `except (ValueError, TypeError):` not `except ValueError, TypeError:`
+
+## Implementation Standards
+When a task involves processing ALL items of a type (e.g., all endpoints, all files in a module), enumerate the complete list first and confirm coverage. Do not stop at 2-3 examples.
+
 ## Project Overview
 
 `fbcm` is a CLI tool for archiving football content (primarily NFL, also CFL and UFL). It wraps `yt-dlp` with specialized functionality for NFL Plus downloads, metadata generation, and media file management for Plex/Jellyfin compatibility.
