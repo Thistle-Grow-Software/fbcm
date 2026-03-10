@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 import os
 from typing import Any
@@ -13,6 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 from ..constants import POSITION_STATS
 from ..models import ColorScheme, ProspectDataSoup
+
+logger = logging.getLogger(__name__)
 
 
 def get_primary_position(position: str) -> str:
@@ -146,7 +149,8 @@ def create_rating_ring(
         font = ImageFont.truetype(
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size // 4
         )
-    except Exception:
+    except OSError as e:
+        logger.debug(f"Failed to load TrueType font, falling back to default: {e}")
         font = ImageFont.load_default()
 
     text = str(int(rating)) if rating == int(rating) else f"{rating:.1f}"
