@@ -3,9 +3,47 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from .constants import CITY_TO_ABBR
+from .mappings import CITY_TO_ABBR
 
 logger = logging.getLogger(__name__)
+
+
+def is_bowl_game(orig_file: str) -> str:
+    """
+    Given a (properly named) Path object, determine if it
+    represents an NCAA bowl/playoff game and return the game's name.
+
+    :param orig_file: The string representing the file name stem for the video file we're inspecting.
+    :type orig_file: str
+    :return: Either the empty string or the name of the bowl game.
+    :rtype: str
+    """
+    bowl_str = ""
+    logger.debug(orig_file)
+    # TODO: This needs to be generalized.
+    for named_game in [
+        "SEC Championship ",
+        "Orange Bowl ",
+        "CFP Final ",
+        "Peach Bowl CFP Semi-Final",
+    ]:
+        if named_game in orig_file:
+            bowl_str = named_game
+            break
+    return bowl_str
+
+
+def transform_file_name(orig_file_stem: str) -> str:
+    """
+    A specialized function that takes a file which follows the naming convention of a specific YouTube channel,
+    and transforms the name to match our convention and play nice with Plex, Jellyfin, etc.
+    :param orig_file_stem: String representing the originally downloaded file's stem.
+    :type: orig_file: str
+    :return: The transformed file _stem_ as a string.
+    :rtype: str
+    """
+    namer = NCAAGameFileNamer()
+    return namer.construct_file_name(orig_file_stem)
 
 
 class FileNamer:
@@ -116,8 +154,6 @@ class NCAAGameFileNamer(FileNamer):
         :param orig_file_stem: String representing the originally downloaded file's stem.
         :return: The transformed file stem.
         """
-        from .base import is_bowl_game
-
         stem = orig_file_stem.replace("UGA", "Georgia").replace("@", "at")
 
         bowl_str = is_bowl_game(orig_file_stem)

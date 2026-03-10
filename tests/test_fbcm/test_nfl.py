@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from fbcm.base import BaseDownloader
+from fbcm.downloaders import BaseDownloader
 from fbcm.nfl import (
     FileNamer,
     GameExtractor,

@@ -9,7 +9,7 @@ from random import uniform
 
 import click
 
-from .constants import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
+from .mappings import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
 from .utils import apply_config_to_kwargs, find_config, load_config
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def download_list(ctx, input_file, output_directory, cookies_file: Path = None):
 
     INPUT_FILE is the path to a text file where video URLs are listed, one per line.
     """
-    from .base import BaseDownloader
+    from .downloaders import BaseDownloader
 
     config = ctx.obj.get("config", {})
     kwargs = {"cookies_file": cookies_file, "output_directory": output_directory}
@@ -566,7 +566,7 @@ def convert_format(
 
     DIRECTORY is the directory fbcm will search for mkv files to convert.
     """
-    from .base import FileOperationsUtil
+    from .file_operations import FileOperationsUtil
 
     config = ctx.obj.get("config", {})
     kwargs = {
@@ -622,7 +622,7 @@ def generate_nfo_files(
     DATES is a JSON file mapping game numbers to the date they were played.
 
     """
-    from .base import MetaDataCreator
+    from .metadata import MetaDataCreator
 
     config = ctx.obj.get("config", {})
     kwargs = {"league": league, "overwrite": overwrite}
