@@ -7,10 +7,107 @@ Precedence: CLI args > command-specific config > common config > defaults.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
+
+VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+VALID_LOG_FORMATS = {"text", "json"}
+VALID_LOG_OUTPUTS = {"console", "file", "both"}
+
+
+@dataclass
+class LoggingConfig:
+    """Configuration for the logging subsystem.
+
+    Supports per-module log levels, file rotation, output target selection,
+    and optional JSON formatting for machine-parseable output.
+    """
+
+    level: str = "INFO"
+    log_file: str | None = None
+    log_format: str = "text"
+    output: str = "console"
+    max_file_size: int = 10_485_760  # 10 MB
+    backup_count: int = 5
+    module_levels: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.level = self.level.upper()
+        if self.level not in VALID_LOG_LEVELS:
+            raise ValueError(
+                f"Invalid log level: {self.level!r}. Must be one of {VALID_LOG_LEVELS}"
+            )
+        self.log_format = self.log_format.lower()
+        if self.log_format not in VALID_LOG_FORMATS:
+            raise ValueError(
+                f"Invalid log format: {self.log_format!r}. Must be one of {VALID_LOG_FORMATS}"
+            )
+        self.output = self.output.lower()
+        if self.output not in VALID_LOG_OUTPUTS:
+            raise ValueError(
+                f"Invalid log output: {self.output!r}. Must be one of {VALID_LOG_OUTPUTS}"
+            )
+        for mod, lvl in self.module_levels.items():
+            upper_lvl = lvl.upper()
+            if upper_lvl not in VALID_LOG_LEVELS:
+                raise ValueError(
+                    f"Invalid log level {lvl!r} for module {mod!r}. "
+                    f"Must be one of {VALID_LOG_LEVELS}"
+                )
+            self.module_levels[mod] = upper_lvl
+
+        if self.output in ("file", "both") and not self.log_file:
+            raise ValueError(
+                "log_file must be specified when output is 'file' or 'both'"
+            )
+
+    @property
+    def numeric_level(self) -> int:
+        return getattr(logging, self.level)
+
+    @classmethod
+    def from_config(
+        cls,
+        config: dict[str, Any],
+        cli_verbose: bool = False,
+        cli_log_file: str | None = None,
+    ) -> LoggingConfig:
+        """Build a LoggingConfig by merging YAML config with CLI overrides.
+
+        CLI flags (--verbose, --log-file) take precedence over config file values.
+        """
+        logging_cfg = config.get("logging", {}) or {}
+
+        level = logging_cfg.get("level", "INFO")
+        if cli_verbose:
+            level = "DEBUG"
+
+        log_file = cli_log_file or logging_cfg.get("log_file")
+
+        log_format = logging_cfg.get("log_format", "text")
+        output = logging_cfg.get("output", "console")
+
+        # If a log_file is specified via CLI but output is still "console",
+        # upgrade to "both" so the file is actually used
+        if log_file and output == "console":
+            output = "both"
+
+        max_file_size = logging_cfg.get("max_file_size", 10_485_760)
+        backup_count = logging_cfg.get("backup_count", 5)
+        module_levels = logging_cfg.get("module_levels", {}) or {}
+
+        return cls(
+            level=level,
+            log_file=log_file,
+            log_format=log_format,
+            output=output,
+            max_file_size=max_file_size,
+            backup_count=backup_count,
+            module_levels=module_levels,
+        )
 
 
 def _resolve(

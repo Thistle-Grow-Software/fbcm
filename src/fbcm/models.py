@@ -288,8 +288,6 @@ class BasicInfo(BaseModel):
     height: str = ""
     weight: str = ""
     forty: str = ""
-    # TODO: Find a source for age and DOB, DraftBuzz doesn't
-    # provide it, apparently
     age: str = ""
     dob: str = ""
     hometown: str = ""

@@ -46,14 +46,19 @@ def cli(
     ctx: click.Context, config: str | None, verbose: bool, log_file: str | None
 ) -> None:
     """fbcm - Football content manager and archiving tools."""
+    from .config import LoggingConfig
     from .logging_config import setup_logging
-
-    level = logging.DEBUG if verbose else logging.INFO
-    setup_logging(level=level, log_file=log_file)
 
     ctx.ensure_object(dict)
     config_path = find_config(config)
-    ctx.obj["config"] = load_config(config_path)
+    loaded_config = load_config(config_path)
+    ctx.obj["config"] = loaded_config
+
+    logging_cfg = LoggingConfig.from_config(
+        loaded_config, cli_verbose=verbose, cli_log_file=log_file
+    )
+    setup_logging(logging_config=logging_cfg)
+
     if config_path:
         click.echo(f"Using config: {config_path}")
 
