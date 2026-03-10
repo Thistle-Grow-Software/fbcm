@@ -2,7 +2,7 @@ import re
 
 from bs4 import BeautifulSoup, Tag
 
-from fbcm.constants import POSITION_TO_GROUP_MAP
+from fbcm.mappings import POSITION_TO_GROUP_MAP
 from fbcm.models import BasicInfo
 
 from .base import ParserBase

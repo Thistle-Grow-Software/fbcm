@@ -2,7 +2,11 @@ def test_can_import_package_modules():
     # Basic smoke tests for imports
     import fbcm  # noqa: F401
     import fbcm.base  # noqa: F401
+    import fbcm.downloaders  # noqa: F401
     import fbcm.fbcm  # noqa: F401
+    import fbcm.file_operations  # noqa: F401
+    import fbcm.mappings  # noqa: F401
+    import fbcm.metadata  # noqa: F401
     import fbcm.nfl  # noqa: F401
 
 

@@ -14,16 +14,11 @@ if TYPE_CHECKING:
 # noinspection PyUnresolvedReferences
 from yt_dlp.extractor.nfl import NFLBaseIE
 
-from .base import (
-    BaseDownloader,
-    get_max_episode_number_in_dir,
-)
-from .constants import (
-    DEFAULT_REPLAY_TYPES,
-    MEDIA_BASE_DIR,
-    TEAM_FULL_NAMES,
-)
+from .constants import MEDIA_BASE_DIR
+from .downloaders import BaseDownloader
 from .file_namer import NFLGameFileNamer
+from .file_operations import get_max_episode_number_in_dir
+from .mappings import DEFAULT_REPLAY_TYPES, TEAM_FULL_NAMES
 from .utils import generate_episode_metadata_xml
 
 logger = logging.getLogger(__name__)
