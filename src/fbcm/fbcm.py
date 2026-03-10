@@ -387,13 +387,13 @@ def extract_draft_profiles(
 
                     completed_profiles.append(prof_slug)
 
-                except TimeoutError as e:
+                except TimeoutError:
                     dump_currently_completed(
                         position=pos,
                         data=position_player_data,
                         completed_list=completed_profiles,
                     )
-                    raise e
+                    raise
             dump_currently_completed(
                 position=pos,
                 data=position_player_data,

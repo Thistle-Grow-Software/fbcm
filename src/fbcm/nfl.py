@@ -269,7 +269,7 @@ class NFLShowDownloader:
         self.show_directory = Path(MEDIA_BASE_DIR, show_dir)
         self.show_directory.mkdir(parents=True, exist_ok=True)
 
-        self.base_yt_ops = {
+        self.base_yt_opts = {
             "cookiefile": self.cookie_file_path,
             "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]",
             "merge_output_format": "mp4",
@@ -327,7 +327,7 @@ class NFLShowDownloader:
                 for ep in season
                 if ((ep not in self.completed) and (ep not in self.errors))
             ]
-            full_opts = {**self.base_yt_ops, "outtmpl": output_tmpl}
+            full_opts = {**self.base_yt_opts, "outtmpl": output_tmpl}
 
             with YoutubeDL(full_opts) as ydl:
                 ydl.download(completed_urls)
