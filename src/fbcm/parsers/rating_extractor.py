@@ -32,7 +32,7 @@ class RatingExtractor(ParserBase):
             **avg_ranks,
         )
 
-    def _perform_rating_checks(self, table: Tag):
+    def _perform_rating_checks(self, table: Tag) -> None:
         ovr_rtg_label = table.find("th")
         if "overall rating" not in ovr_rtg_label.get_text().lower():
             raise ValueError(

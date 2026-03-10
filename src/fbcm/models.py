@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, TypeAlias, Union, get_args, get_origin
+from typing import Any, ClassVar, TypeAlias, Union, get_args, get_origin
 
 from docx.shared import RGBColor
 
@@ -9,7 +9,7 @@ from .constants import PHOTO_BASE_DIR
 
 @dataclass
 class BaseModel:
-    exclude_fields = []
+    exclude_fields: ClassVar[list[str]] = []
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -25,7 +25,7 @@ class BaseModel:
             return None
 
         field_info = {f.name: f.type for f in fields(cls)}
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
 
         for key, value in data.items():
             if key not in field_info:
@@ -296,7 +296,7 @@ class BasicInfo(BaseModel):
     photo_url: str | None = None
 
     @property
-    def photo_path(self):
+    def photo_path(self) -> Path:
         return Path(PHOTO_BASE_DIR, f"{self.full_name}.png")
 
 

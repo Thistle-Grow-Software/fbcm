@@ -1,6 +1,7 @@
 import json
 import math
 import os
+from typing import Any
 
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
@@ -77,7 +78,7 @@ def create_rating_ring(
     primary_color: str,
     light_color: str,
     size: int = 120,
-    output_path: str = None,
+    output_path: str | None = None,
 ) -> str:
     """Create a circular progress ring image."""
     ring_width = 12
@@ -168,7 +169,7 @@ def create_rating_ring(
 # ─── DOCX HELPERS ────────────────────────────────────────────────────────────
 
 
-def set_cell_shading(cell, hex_color: str):
+def set_cell_shading(cell: Any, hex_color: str) -> None:
     """Set cell background color."""
     hex_color = hex_color.lstrip("#").upper()
     tc = cell._tc
@@ -183,7 +184,9 @@ def set_cell_shading(cell, hex_color: str):
     tcPr.append(shading)
 
 
-def set_cell_margins(cell, top=0, bottom=0, left=0, right=0):
+def set_cell_margins(
+    cell: Any, top: int = 0, bottom: int = 0, left: int = 0, right: int = 0
+) -> None:
     """Set cell margins in twips (1/20 of a point, 1440 twips = 1 inch)."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
@@ -205,7 +208,7 @@ def set_cell_margins(cell, top=0, bottom=0, left=0, right=0):
     tcPr.append(tcMar)
 
 
-def remove_cell_borders(cell):
+def remove_cell_borders(cell: Any) -> None:
     """Remove all borders from a cell."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
@@ -220,7 +223,7 @@ def remove_cell_borders(cell):
     tcPr.append(tcBorders)
 
 
-def add_left_border(cell, hex_color: str, size: int = 24):
+def add_left_border(cell: Any, hex_color: str, size: int = 24) -> None:
     """Add left border to cell."""
     hex_color = hex_color.lstrip("#").upper()
     tc = cell._tc
@@ -254,7 +257,7 @@ class WordDocGenerator:
         output_path: str,
         ring_image_base_dir: str,
         colors_path: str,
-        prospect: ProspectDataSoup = None,
+        prospect: ProspectDataSoup | None = None,
     ):
         self.output_path = output_path
         self.ring_img_base_dir = ring_image_base_dir
@@ -268,7 +271,7 @@ class WordDocGenerator:
         if prospect:
             self.add_prospect(prospect)
 
-    def add_prospect(self, prospect: ProspectDataSoup):
+    def add_prospect(self, prospect: ProspectDataSoup) -> None:
         """Add a prospect profile to the document. The profile is rendered immediately."""
         if self._prospect_count > 0:
             self.document.add_page_break()
@@ -277,12 +280,12 @@ class WordDocGenerator:
         self._prospect_count += 1
         self._last_prospect_name = prospect.basic_info.full_name
 
-    def _set_prospect_context(self, prospect: ProspectDataSoup):
+    def _set_prospect_context(self, prospect: ProspectDataSoup) -> None:
         """Set the active prospect and derive school colors for section generation."""
         self.prospect = prospect
         self.colors = self.color_handler.get_school_colors(prospect.basic_info.college)
 
-    def _set_margins(self):
+    def _set_margins(self) -> None:
         section = self.document.sections[0]
         section.page_width = Inches(8.5)
         section.page_height = Inches(11)
@@ -291,7 +294,7 @@ class WordDocGenerator:
         section.left_margin = Inches(1)
         section.right_margin = Inches(0.75)
 
-    def _gen_rating_ring(self, size: int = 120):
+    def _gen_rating_ring(self, size: int = 120) -> str:
         ring_width = 12
         img = Image.new("RGBA", (size, size), (255, 255, 255, 0))
         draw = ImageDraw.Draw(img)
@@ -383,7 +386,7 @@ class WordDocGenerator:
         self._ring_img_paths.append(self.ring_img_path)
         return self.ring_img_path
 
-    def _gen_header_table(self):
+    def _gen_header_table(self) -> None:
         # TODO: Split this into smaller methods
         header_table = self.document.add_table(rows=1, cols=3)
         header_table.autofit = False
@@ -450,7 +453,7 @@ class WordDocGenerator:
         run.font.size = Pt(6.5)
         run.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
 
-    def _gen_rankings_bar(self):
+    def _gen_rankings_bar(self) -> None:
         rankings_table = self.document.add_table(rows=1, cols=5)
         rankings_table.autofit = False
 
@@ -562,7 +565,7 @@ class WordDocGenerator:
             return "—"
         return str(value)
 
-    def _gen_stats_bar(self):
+    def _gen_stats_bar(self) -> None:
         primary_position = get_primary_position(self.prospect.basic_info.position)
         pos_config = POSITION_STATS.get(primary_position, {})
         categories = list(pos_config.keys())
@@ -675,7 +678,7 @@ class WordDocGenerator:
             run.font.italic = True
             run.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
 
-    def _gen_skills_and_comps(self):
+    def _gen_skills_and_comps(self) -> None:
         skills_table = self.document.add_table(rows=1, cols=2)
         skills_table.autofit = False
 
@@ -767,7 +770,7 @@ class WordDocGenerator:
 
         self.document.add_paragraph().paragraph_format.space_after = Pt(4)
 
-    def _gen_bio(self):
+    def _gen_bio(self) -> None:
         if self.prospect.scouting_report.bio:
             header = self.document.add_paragraph()
             header.paragraph_format.space_after = Pt(4)
@@ -788,7 +791,7 @@ class WordDocGenerator:
             run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
         # self.document.add_paragraph().paragraph_format.space_after = Pt(4)
 
-    def _gen_strengths_weaknesses(self):
+    def _gen_strengths_weaknesses(self) -> None:
         sw_table = self.document.add_table(rows=1, cols=2)
         sw_table.autofit = False
 
@@ -844,7 +847,7 @@ class WordDocGenerator:
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
 
-    def _gen_scouting_summary(self):
+    def _gen_scouting_summary(self) -> None:
         if self.prospect.scouting_report.summary:
             self.document.add_paragraph().paragraph_format.space_after = Pt(4)
 
@@ -874,7 +877,7 @@ class WordDocGenerator:
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
 
-    def _gen_prospect_profile(self):
+    def _gen_prospect_profile(self) -> None:
         """Generate all sections for the current active prospect."""
         self._gen_header_table()
 
@@ -893,14 +896,14 @@ class WordDocGenerator:
         self._gen_strengths_weaknesses()
         self._gen_scouting_summary()
 
-    def _cleanup_ring_images(self):
+    def _cleanup_ring_images(self) -> None:
         """Remove all temporary ring image files."""
         for path in self._ring_img_paths:
             if path and os.path.exists(path):
                 os.remove(path)
         self._ring_img_paths.clear()
 
-    def generate_complete_document(self, filename: str = None):
+    def generate_complete_document(self, filename: str | None = None) -> None:
         if filename:
             full_doc_path = f"{self.output_path}/{filename}"
         elif self._prospect_count == 1:
