@@ -3,14 +3,21 @@ import logging
 import os
 import random
 import time
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from random import uniform
 
 import click
 
+from .config import (
+    ConvertFormatConfig,
+    DownloadListConfig,
+    GenerateNfoConfig,
+    NFLGamesConfig,
+    NFLShowConfig,
+)
 from .mappings import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
-from .utils import apply_config_to_kwargs, find_config, load_config
+from .utils import find_config, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -70,15 +77,15 @@ def download_list(ctx, input_file, output_directory, cookies_file: Path = None):
     from .downloaders import BaseDownloader
 
     config = ctx.obj.get("config", {})
-    kwargs = {"cookies_file": cookies_file, "output_directory": output_directory}
-    kwargs = apply_config_to_kwargs(config, "download_list", kwargs)
-
-    if not kwargs.get("output_directory"):
-        raise click.UsageError("--output-directory is required (via option or config)")
+    cfg = DownloadListConfig.from_cli_and_config(
+        config=config,
+        output_directory=output_directory,
+        cookies_file=cookies_file,
+    )
 
     bd = BaseDownloader(
-        cookie_file_path=kwargs["cookies_file"],
-        destination_dir=kwargs["output_directory"],
+        cookie_file_path=cfg.cookies_file,
+        destination_dir=cfg.output_directory,
     )
     bd.download_from_file(Path(input_file))
 
@@ -105,13 +112,14 @@ def nfl_show(ctx, input_file, output_directory, cookies_file):
     from .nfl import NFLShowDownloader
 
     config = ctx.obj.get("config", {})
-    kwargs = {"cookies_file": cookies_file, "output_directory": output_directory}
-    kwargs = apply_config_to_kwargs(config, "nfl_show", kwargs)
+    cfg = NFLShowConfig.from_cli_and_config(
+        config=config,
+        output_directory=output_directory,
+        cookies_file=cookies_file,
+    )
 
     click.echo("Downloading NFL show")
-    nfl = NFLShowDownloader(
-        input_file, kwargs.get("cookies_file"), kwargs.get("output_directory")
-    )
+    nfl = NFLShowDownloader(input_file, cfg.cookies_file, cfg.output_directory)
     nfl.download_episodes()
 
 
@@ -203,42 +211,26 @@ def nfl_games(
     from .nfl import NFLWeeklyDownloader
 
     config = ctx.obj.get("config", {})
-
-    # Build kwargs, converting tuples to lists for config merging
-    kwargs = {
-        "output_directory": output_directory,
-        "cookies_file": cookies_file,
-        "credentials_file": credentials_file,
-        "nfl_username": nfl_username if nfl_username else None,
-        "nfl_password": nfl_password if nfl_password else None,
-        "show_login": show_login if show_login else None,
-        "season": season if season else None,
-        "week": list(week) if week else None,
-        "team": list(team) if team else None,
-        "exclude": list(exclude) if exclude else None,
-        "replay_type": list(replay_type) if replay_type else None,
-        "start_ep": start_ep,
-        "list_only": list_only,
-    }
-    kwargs = apply_config_to_kwargs(config, "nfl_games", kwargs)
-    # Apply defaults for values still not set
-    output_directory = kwargs.get("output_directory") or os.getcwd()
-    cookies_file = kwargs.get("cookies_file") or "cookies.txt"
-    credentials_file = kwargs.get("credentials_file")
-    nfl_username = kwargs.get("nfl_username", None)
-    nfl_password = kwargs.get("nfl_password", None)
-    show_login = kwargs.get("show_login", False)
-    season = kwargs.get("season", date.today().year)
-    week = kwargs.get("week", [wk for wk in range(1, 19)])
-    team = kwargs.get("team") or []
-    exclude = kwargs.get("exclude") or []
-    replay_type = kwargs.get("replay_type") or ["full_game"]
-    start_ep = kwargs.get("start_ep") or None
-    list_only = kwargs.get("list_only") or False
+    cfg = NFLGamesConfig.from_cli_and_config(
+        config=config,
+        output_directory=output_directory,
+        cookies_file=cookies_file,
+        credentials_file=credentials_file,
+        nfl_username=nfl_username,
+        nfl_password=nfl_password,
+        show_login=show_login,
+        season=season,
+        week=week,
+        team=team,
+        exclude=exclude,
+        replay_type=replay_type,
+        start_ep=start_ep,
+        list_only=list_only,
+    )
 
     # Validate mutual exclusivity: credentials_file vs username/password
-    has_credentials_file = credentials_file is not None
-    has_username_password = nfl_username is not None or nfl_password is not None
+    has_credentials_file = cfg.credentials_file is not None
+    has_username_password = cfg.nfl_username is not None or cfg.nfl_password is not None
 
     if has_credentials_file and has_username_password:
         raise click.UsageError(
@@ -248,26 +240,26 @@ def nfl_games(
 
     # Load credentials from file if provided
     nfl_auth = None
-    if credentials_file:
-        with open(credentials_file) as f:
+    if cfg.credentials_file:
+        with open(cfg.credentials_file) as f:
             nfl_auth = json.load(f)
-        click.echo(f"Using credentials file: {credentials_file}")
+        click.echo(f"Using credentials file: {cfg.credentials_file}")
     else:
-        click.echo(f"NFL Username: {nfl_username}")
+        click.echo(f"NFL Username: {cfg.nfl_username}")
 
-    click.echo(f"Output directory: {output_directory}")
-    click.echo(f"Cookies file: {cookies_file}")
-    click.echo(f"Show Login: {show_login}")
-    click.echo(f"Season: {season}")
-    click.echo(f"Week: {week}")
-    click.echo(f"Team: {team}")
-    click.echo(f"Exclude: {exclude}")
-    click.echo(f"Replay Type: {replay_type}")
-    click.echo(f"Start episode: {start_ep}")
+    click.echo(f"Output directory: {cfg.output_directory}")
+    click.echo(f"Cookies file: {cfg.cookies_file}")
+    click.echo(f"Show Login: {cfg.show_login}")
+    click.echo(f"Season: {cfg.season}")
+    click.echo(f"Week: {cfg.week}")
+    click.echo(f"Team: {cfg.team}")
+    click.echo(f"Exclude: {cfg.exclude}")
+    click.echo(f"Replay Type: {cfg.replay_type}")
+    click.echo(f"Start episode: {cfg.start_ep}")
 
     profile_dir = os.getenv("FIREFOX_PROFILE")
     allowed_extractors = ["nfl.com:plus:replay"]
-    extractor_args = {"nflplusreplay": {"type": [replay_type[0]]}}
+    extractor_args = {"nflplusreplay": {"type": [cfg.replay_type[0]]}}
 
     add_opts = {
         "allowed_extractors": allowed_extractors,
@@ -276,27 +268,30 @@ def nfl_games(
 
     nwd = NFLWeeklyDownloader(
         firefox_profile_path=profile_dir,
-        destination_dir=output_directory,
-        nfl_username=nfl_username,
-        nfl_password=nfl_password,
+        destination_dir=cfg.output_directory,
+        nfl_username=cfg.nfl_username,
+        nfl_password=cfg.nfl_password,
         nfl_auth=nfl_auth,
-        show_login=show_login,
+        show_login=cfg.show_login,
         add_yt_opts=add_opts,
     )
 
-    if team:
-        teams_to_fetch = [tm for tm in team if tm not in exclude]
+    if cfg.team:
+        teams_to_fetch = [tm for tm in cfg.team if tm not in cfg.exclude]
     else:
-        teams_to_fetch = [tm for tm in TEAM_FULL_NAMES if tm not in exclude]
+        teams_to_fetch = [tm for tm in TEAM_FULL_NAMES if tm not in cfg.exclude]
 
-    replay_type = [DEFAULT_REPLAY_TYPES[r] for r in replay_type]
+    resolved_replay_types = [DEFAULT_REPLAY_TYPES[r] for r in cfg.replay_type]
 
-    if list_only:
+    if cfg.list_only:
         games = []
-        for wk in week:
+        for wk in cfg.week:
             click.echo(f"Working on games for Week {wk}")
             wk_games = nwd.get_and_extract_games_for_week(
-                season=season, week=wk, teams=teams_to_fetch, replay_types=replay_type
+                season=cfg.season,
+                week=wk,
+                teams=teams_to_fetch,
+                replay_types=resolved_replay_types,
             )
             games.extend(wk_games)
 
@@ -304,14 +299,14 @@ def nfl_games(
             logger.info(f"{game}")
 
     else:
-        for wk in week:
+        for wk in cfg.week:
             click.echo(f"Working on games for Week {wk}")
             nwd.download_all_for_week(
-                season=season,
+                season=cfg.season,
                 week=wk,
                 teams=teams_to_fetch,
-                replay_types=replay_type,
-                start_ep=start_ep,
+                replay_types=resolved_replay_types,
+                start_ep=cfg.start_ep,
             )
 
 
@@ -569,26 +564,21 @@ def convert_format(
     from .file_operations import FileOperationsUtil
 
     config = ctx.obj.get("config", {})
-    kwargs = {
-        "orig_format": orig_format,
-        "new_format": new_format,
-        "pretend": pretend,
-        "delete": delete,
-    }
-    kwargs = apply_config_to_kwargs(config, "convert_format", kwargs)
-
-    orig_format = kwargs.get("orig_format") or "mkv"
-    new_format = kwargs.get("new_format") or "mp4"
-    pretend = kwargs.get("pretend", False)
-    delete = kwargs.get("delete", False)
+    cfg = ConvertFormatConfig.from_cli_and_config(
+        config=config,
+        orig_format=orig_format,
+        new_format=new_format,
+        pretend=pretend,
+        delete=delete,
+    )
 
     conv_dir = Path(directory)
     if not conv_dir.is_dir():
         raise FileNotFoundError(f"Directory {conv_dir} does not exist.")
 
-    fops_util = FileOperationsUtil(conv_dir, pretend)
+    fops_util = FileOperationsUtil(conv_dir, cfg.pretend)
     fops_util.convert_formats(
-        orig_format=orig_format, new_format=new_format, delete=delete
+        orig_format=cfg.orig_format, new_format=cfg.new_format, delete=cfg.delete
     )
 
 
@@ -625,18 +615,18 @@ def generate_nfo_files(
     from .metadata import MetaDataCreator
 
     config = ctx.obj.get("config", {})
-    kwargs = {"league": league, "overwrite": overwrite}
-    kwargs = apply_config_to_kwargs(config, "generate_nfo_files", kwargs)
+    cfg = GenerateNfoConfig.from_cli_and_config(
+        config=config,
+        league=league,
+        overwrite=overwrite,
+    )
 
-    league = kwargs.get("league") or "nfl"
-    overwrite = kwargs.get("overwrite", False)
-
-    click.echo(f"Generating .nfo files for {league.upper()} season {season}.")
+    click.echo(f"Generating .nfo files for {cfg.league.upper()} season {season}.")
     click.echo(f"Looking for relevant video files in {directory}")
     with open(dates) as infile:
         game_dates = json.load(infile)
 
-    mdc = MetaDataCreator(base_dir=directory, game_dates=game_dates, league=league)
+    mdc = MetaDataCreator(base_dir=directory, game_dates=game_dates, league=cfg.league)
 
-    mdc.create_nfo_for_season(year=season, overwrite=overwrite)
+    mdc.create_nfo_for_season(year=season, overwrite=cfg.overwrite)
     click.echo("Done")
