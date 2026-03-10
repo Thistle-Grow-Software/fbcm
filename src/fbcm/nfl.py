@@ -19,58 +19,18 @@ from .base import (
     get_max_episode_number_in_dir,
 )
 from .constants import (
-    CITY_TO_ABBR,
     DEFAULT_REPLAY_TYPES,
     MEDIA_BASE_DIR,
     TEAM_FULL_NAMES,
 )
+from .file_namer import NFLGameFileNamer
 from .utils import generate_episode_metadata_xml
 
 logger = logging.getLogger(__name__)
 
 
-class FileNamer:
-    """Constructs file names for NFL game replay downloads."""
-
-    def construct_file_name(self, game: dict, replay_type: str, ep_num: int) -> str:
-        """
-        Create the video file's name according to the established format.
-
-        :param game: Data for the game we're working on.
-        :type game: Dict
-
-        :param replay_type: The replay type we're currently storing.
-        :type replay_type: str
-
-        :param ep_num: The position of this game in the sequence of all NFL games played in the season.
-        :type ep_num: int
-
-        :return: The stem to be used in the video file's name.
-        :rtype: str
-        """
-        logger.debug(f"Constructing file name for {game['slug']}")
-
-        away_city = " ".join(game["awayTeam"].split(" ")[:-1])
-        home_city = " ".join(game["homeTeam"].split(" ")[:-1])
-
-        if "Jets" in game["awayTeam"] or "Chargers" in game["awayTeam"]:
-            away_city += " (A)"
-        elif "Giants" in game["awayTeam"] or "Rams" in game["awayTeam"]:
-            away_city += " (N)"
-
-        if "Jets" in game["homeTeam"] or "Chargers" in game["homeTeam"]:
-            home_city += " (A)"
-        elif "Giants" in game["homeTeam"] or "Rams" in game["homeTeam"]:
-            home_city += " (N)"
-
-        away_tm = CITY_TO_ABBR[away_city]
-        home_tm = CITY_TO_ABBR[home_city]
-        return (
-            f"NFL {replay_type} - "
-            f"s{game['season']}e{str(ep_num).zfill(3)} - "
-            f"{game['season']}_Wk{str(game['week']).zfill(2)}_"
-            f"{away_tm}_{game['divider']}_{home_tm}"
-        )
+# Alias for backward compatibility; the implementation now lives in file_namer.py
+FileNamer = NFLGameFileNamer
 
 
 class GameExtractor:
@@ -449,7 +409,9 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
                 headless_login=(not show_login),
             )
 
-        self.file_namer = file_namer or FileNamer()
+        self.file_namer = file_namer or FileNamer(base_directory=self.destination_dir)
+        if self.file_namer.base_directory is None:
+            self.file_namer.base_directory = self.destination_dir
         self.game_extractor = game_extractor or GameExtractor(
             nfl_client=self.nfl_client
         )
@@ -482,9 +444,10 @@ class NFLWeeklyDownloader(BaseDownloader, NFLBaseIE):
         for replay_type, info in game["replays"].items():
             logger.info(f"Replay type: {replay_type}")
             file_name = self.file_namer.construct_file_name(game, replay_type, ep_num)
-            outtmpl = Path(self.destination_dir, file_name)
-
-            outtmpl = f"{outtmpl}.%(ext)s"
+            output_path = self.file_namer.construct_output_path(
+                file_stem=file_name, extension="%(ext)s"
+            )
+            outtmpl = str(output_path)
             logger.info(f"Output path: {outtmpl}")
             self.base_yt_opts["outtmpl"] = str(outtmpl)
 

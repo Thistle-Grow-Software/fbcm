@@ -206,32 +206,10 @@ def transform_file_name(orig_file_stem: str) -> str:
     :return: The transformed file _stem_ as a string.
     :rtype: str
     """
-    stem = orig_file_stem.replace("UGA", "Georgia").replace("@", "at")
+    from .file_namer import NCAAGameFileNamer
 
-    if bowl_str := is_bowl_game(orig_file_stem):
-        stem = stem.replace(bowl_str, "")
-        bowl_str = bowl_str.strip().replace(" ", "").replace("-Final", "")
-
-    stem_parts = stem.split(" ")
-
-    year = stem_parts[0]
-    game_num = stem_parts[3]
-
-    try:
-        divider_index = stem_parts.index("at")
-    except ValueError:
-        divider_index = stem_parts.index("vs")
-
-    divider = stem_parts[divider_index]
-
-    team_one = "_".join(stem_parts[5:divider_index])
-    team_two = "_".join(stem_parts[divider_index + 1 :])
-
-    prefix = f"NCAA - s{year}e{game_num.zfill(2)}"
-
-    game_str = f"{game_num.zfill(2)}{bowl_str}"
-    new_stem = f"{prefix} - {year}_Gm{game_str}_{team_one}_{divider}_{team_two}"
-    return new_stem
+    namer = NCAAGameFileNamer()
+    return namer.construct_file_name(orig_file_stem)
 
 
 def get_max_episode_number_in_dir(directory: Path) -> int:
@@ -362,7 +340,9 @@ class FileOperationsUtil:
     ) -> None:
         """
         Create a util object, storing the directory we will be working in.
-            TODO: Is this really the right place for directory_path?
+
+        Directory path is managed via a :class:`~fbcm.file_namer.FileNamer`
+        instance so that output path construction is centralized.
 
         :param directory_path: The directory containing the files on which we will be operating.
         :type directory_path: str | Path
@@ -371,10 +351,12 @@ class FileOperationsUtil:
         :param verbose: If True, enable verbose logging.
         :type verbose: bool
         """
+        from .file_namer import FileNamer
 
         if isinstance(directory_path, str):
             directory_path = Path(directory_path)
 
+        self.file_namer = FileNamer(base_directory=directory_path)
         self.directory_path = directory_path
         self.pretend = pretend
         self.verbose = verbose
@@ -670,12 +652,17 @@ class MetaDataCreator:
         :param series_name: The name with which the games we're handling are prefixed.
         :type series_name: str
         """
+        from .file_namer import SeriesFileNamer
+
+        namer = SeriesFileNamer(series_name=series_name)
         season_dir = Path(self.base_dir, f"Season {year}")
         for f in season_dir.rglob(f"{year}*"):
             old_name = f.name
             week_substring = f.stem.split("_")[1]
             episode_number = "".join([c for c in week_substring if c.isdigit()])
-            new_filename = f"{series_name} - s{year}e{episode_number.zfill(3)} - {f.stem}{f.suffix}"
-            new_path = f.with_name(new_filename)
+            file_stem = namer.construct_file_name(
+                season=year, episode=episode_number, episode_name=f.stem
+            )
+            new_path = f.with_name(f"{file_stem}{f.suffix}")
             f.replace(new_path)
             logger.info(f"Moved {old_name} -> {f.name}")
