@@ -12,6 +12,12 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from fbcm.browser_retry import BrowserRetryHandler
+from fbcm.constants import (
+    DEFAULT_MAX_BROWSER_RETRIES,
+    DEFAULT_SLOW_MO_MS,
+    NFL_DRAFT_BUZZ_BASE_URL,
+    PAGE_NAVIGATION_SLEEP_RANGE,
+)
 from fbcm.models import Comparison, ProspectDataSoup
 from fbcm.parsers import (
     BasicInfoParser,
@@ -31,16 +37,12 @@ class PageFetcher:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
-    DEFAULT_VIEWPORT = {"width": 1920, "height": 1080}
-    CONTENT_WAIT_TIME = 3000
-
-    MAX_RETRIES = 3
 
     def __init__(
         self,
         playwright: Playwright,
         headless: bool = False,
-        base_url: str = "https://www.nfldraftbuzz.com",
+        base_url: str = NFL_DRAFT_BUZZ_BASE_URL,
     ):
         self.base_url = base_url
         self.playwright = playwright
@@ -49,12 +51,14 @@ class PageFetcher:
         self._retry_handler = BrowserRetryHandler(
             playwright=playwright,
             launch_browser=self._launch_browser,
-            max_retries=self.MAX_RETRIES,
+            max_retries=DEFAULT_MAX_BROWSER_RETRIES,
         )
 
     def _launch_browser(self) -> Browser:
         """Launch a new browser instance."""
-        return self.playwright.firefox.launch(headless=self.headless, slow_mo=150)
+        return self.playwright.firefox.launch(
+            headless=self.headless, slow_mo=DEFAULT_SLOW_MO_MS
+        )
 
     def _ensure_browser_connected(self) -> None:
         """Ensure browser is connected, relaunch if necessary."""
@@ -276,7 +280,7 @@ class DraftBuzzScraper:
         headless: bool = True,
     ):
         self.profile_root_dir = profile_root_dir
-        self.base_url = "https://www.nfldraftbuzz.com"
+        self.base_url = NFL_DRAFT_BUZZ_BASE_URL
         self.fetcher = fetcher or PageFetcher(
             playwright=playwright, base_url=self.base_url, headless=headless
         )
@@ -339,16 +343,14 @@ class DraftBuzzScraper:
 
 
 class ProspectProfileListExtractor:
-    MAX_RETRIES = 3
-
     def __init__(self, playwright: Playwright):
         self.playwright = playwright
         self.browser = self._launch_browser()
-        self.base_url = "https://www.nfldraftbuzz.com"
+        self.base_url = NFL_DRAFT_BUZZ_BASE_URL
         self._retry_handler = BrowserRetryHandler(
             playwright=playwright,
             launch_browser=self._launch_browser,
-            max_retries=self.MAX_RETRIES,
+            max_retries=DEFAULT_MAX_BROWSER_RETRIES,
         )
 
     def _launch_browser(self) -> Browser:
@@ -380,7 +382,7 @@ class ProspectProfileListExtractor:
             page.close()
             full_url = f"{self.base_url}{path}"
             page = self._create_page_with_retry(full_url)
-            time.sleep(uniform(4.5, 5.5))
+            time.sleep(uniform(*PAGE_NAVIGATION_SLEEP_RANGE))
 
             prospect_hrefs = self.extract_prospect_hrefs(page)
             all_profiles.extend(prospect_hrefs)

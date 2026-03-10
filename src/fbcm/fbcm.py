@@ -16,6 +16,7 @@ from .config import (
     NFLGamesConfig,
     NFLShowConfig,
 )
+from .constants import POSITION_GROUP_SLEEP_RANGE, PROFILE_SCRAPE_SLEEP_RANGE
 from .mappings import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
 from .utils import find_config, load_config
 
@@ -376,7 +377,7 @@ def extract_draft_profiles(
                     continue
 
                 click.echo(f"Processing player profile: {prof_slug}")
-                time.sleep(uniform(3.5, 4.5))
+                time.sleep(uniform(*PROFILE_SCRAPE_SLEEP_RANGE))
 
                 try:
                     player_data = scraper.scrape_from_url(url=prof_slug, position=pos)
@@ -400,7 +401,7 @@ def extract_draft_profiles(
                 completed_list=completed_profiles,
             )
 
-            time.sleep(random.uniform(10, 15))
+            time.sleep(random.uniform(*POSITION_GROUP_SLEEP_RANGE))
 
 
 @cli.command()

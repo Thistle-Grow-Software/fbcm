@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 # noinspection PyUnresolvedReferences
 from yt_dlp.extractor.nfl import NFLBaseIE
 
-from .constants import MEDIA_BASE_DIR
+from .constants import MEDIA_BASE_DIR, NFL_EPISODES_BASE_URL, NFL_REPLAY_BASE_URL
 from .downloaders import BaseDownloader
 from .file_namer import NFLGameFileNamer
 from .file_operations import get_max_episode_number_in_dir
@@ -34,7 +34,7 @@ class GameExtractor:
     def __init__(
         self,
         nfl_client: Any,
-        replay_base_url: str = "https://www.nfl.com/plus/games/",
+        replay_base_url: str = NFL_REPLAY_BASE_URL,
     ) -> None:
         self.nfl_client = nfl_client
         self._replay_base_url = replay_base_url
@@ -256,7 +256,7 @@ class NFLShowDownloader:
         :param pause_time: Number of seconds to sleep the program between season downloads
             to avoid being banned or throttled.
         """
-        self.base_url = "https://www.nfl.com/plus/episodes/"
+        self.base_url = NFL_EPISODES_BASE_URL
 
         with open(str(episode_list_path)) as infile:
             data = json.load(infile)
