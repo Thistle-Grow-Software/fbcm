@@ -1,0 +1,13 @@
+name: Publish to CodeArtifact
+
+# Temporarily disabled — original trigger: release (published)
+on: workflow_dispatch
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    uses: Thistle-Grow-Software/.github/.github/workflows/publish-codeartifact.yml@main
+    secrets: inherit
