@@ -1,7 +1,10 @@
 name: Quality Gates
 
-# Temporarily disabled — original triggers: push (master), pull_request (all branches)
-on: workflow_dispatch
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
 
 permissions:
   id-token: write
@@ -12,6 +15,11 @@ jobs:
     uses: Thistle-Grow-Software/.github/.github/workflows/python-quality-gates.yml@main
     with:
       needs-codeartifact: true
+      uv-sync-args: "--extra dev"
       codecov-enabled: true
       codecov-slug: "Thistle-Grow-Software/fbcm"
-    secrets: inherit
+    secrets:
+      aws-role-arn: ${{ secrets.AWS_ROLE_ARN }}
+      codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
+      codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
