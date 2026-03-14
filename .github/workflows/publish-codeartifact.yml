@@ -1,7 +1,8 @@
 name: Publish to CodeArtifact
 
-# Temporarily disabled — original trigger: release (published)
-on: workflow_dispatch
+on:
+  release:
+    types: [published]
 
 permissions:
   id-token: write
@@ -10,4 +11,8 @@ permissions:
 jobs:
   publish:
     uses: Thistle-Grow-Software/.github/.github/workflows/publish-codeartifact.yml@main
-    secrets: inherit
+    secrets:
+      aws-role-arn: ${{ secrets.AWS_ROLE_ARN }}
+      codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
+      codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
+      codeartifact-repo: ${{ secrets.CODEARTIFACT_REPO }}
