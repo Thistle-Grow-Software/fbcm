@@ -1,0 +1,13 @@
+name: Quality Gates
+
+# Temporarily disabled — original triggers: push (master), pull_request (all branches)
+on: workflow_dispatch
+
+jobs:
+  quality-gates:
+    uses: Thistle-Grow-Software/.github/.github/workflows/python-quality-gates.yml@main
+    with:
+      needs-codeartifact: true
+      codecov-enabled: true
+      codecov-slug: "Thistle-Grow-Software/fbcm"
+    secrets: inherit
