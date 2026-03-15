@@ -10,7 +10,7 @@ def test_griddy_dependency_is_not_exact_pin():
     """No consumer repo should pin an exact griddy version (TGF-218)."""
     content = PYPROJECT_PATH.read_text()
     # Match any griddy dependency line
-    match = re.search(r'"griddy([^"]*)"', content)
+    match = re.search(r'"griddy([><=!~][^"]*)"', content)
     assert match is not None, "griddy dependency not found in pyproject.toml"
     version_spec = match.group(1)
     # Should not be an exact pin (==X.Y.Z)
@@ -22,7 +22,7 @@ def test_griddy_dependency_is_not_exact_pin():
 def test_griddy_dependency_has_upper_bound():
     """The griddy range should have an upper bound to prevent major version surprises."""
     content = PYPROJECT_PATH.read_text()
-    match = re.search(r'"griddy([^"]*)"', content)
+    match = re.search(r'"griddy([><=!~][^"]*)"', content)
     assert match is not None, "griddy dependency not found in pyproject.toml"
     version_spec = match.group(1)
     assert "<" in version_spec, (
@@ -33,7 +33,7 @@ def test_griddy_dependency_has_upper_bound():
 def test_griddy_dependency_has_lower_bound():
     """The griddy range should have a lower bound at the minimum compatible version."""
     content = PYPROJECT_PATH.read_text()
-    match = re.search(r'"griddy([^"]*)"', content)
+    match = re.search(r'"griddy([><=!~][^"]*)"', content)
     assert match is not None, "griddy dependency not found in pyproject.toml"
     version_spec = match.group(1)
     assert ">=" in version_spec, (
