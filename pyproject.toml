@@ -59,6 +59,7 @@ index-url = "https://pypi.org/simple"
 [[tool.uv.index]]
 name = "private-registry"
 url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/"
+publish-url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/"
 explicit = true
 
 [tool.uv.sources]
