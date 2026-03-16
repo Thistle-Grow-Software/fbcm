@@ -1,12 +1,12 @@
 [project]
-name="fbcm"
-version="0.3.0"
-description="Command line tools for downloading and archiving (American) football content"
+name = "fbcm"
+version = "0.3.0"
+description = "Command line tools for downloading and archiving (American) football content"
 authors = [
     {name = "John Griebel", email = "john@thistlegrow.com"}
 ]
 readme = "README.md"
-requires-python=">=3.14"
+requires-python = ">=3.14"
 dependencies = [
     "yt-dlp==2025.12.8",
     "click==8.3.1",
