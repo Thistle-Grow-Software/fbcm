@@ -374,8 +374,9 @@ def extract_draft_profiles(
         )
 
         completed_profiles = []
-        with open("input_files/completed.json") as infile:
-            completed_profiles = json.load(infile)
+        comp_prof_file = Path("input_files/completed.json")
+        if comp_prof_file.exists():
+            completed_profiles = json.loads(comp_prof_file.read_text())
 
         click.echo(f"Loaded {len(completed_profiles)} completed profiles.")
 
@@ -491,7 +492,7 @@ def update_draft_prospect_urls(ctx: click.Context) -> None:
     with sync_playwright() as playwright:
         pple = ProspectProfileListExtractor(playwright=playwright)
 
-        for position in POSITIONS:
+        for position in ["DB"]:
             try:
                 profile_lists[position] = pple.extract_prospect_urls_for_position(
                     pos=position
@@ -502,7 +503,7 @@ def update_draft_prospect_urls(ctx: click.Context) -> None:
                 )
                 time.sleep(5)
 
-    with open("prospect_urls.json", "w") as outfile:
+    with open("prospect_urls_db.json", "w") as outfile:
         json.dump(profile_lists, outfile, indent=4)
 
 
@@ -511,6 +512,7 @@ def dump_currently_completed(position: str, data: dict, completed_list: list) ->
     suffix = f"{rn.hour}_{rn.minute}_{rn.second}"
     fname = f"{position}_redo_{suffix}.json"
 
+    # TODO: Implement robust path/filename handling throughout the app
     with open(f"output_data/{fname}", "w") as outfile:
         json.dump(data, outfile, indent=4)
 

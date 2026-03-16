@@ -61,6 +61,96 @@ class TestPageFetcherGetImageType:
         assert PageFetcher._get_image_type("") == "jpeg"
 
 
+# ─── PageFetcher.fetch_soup Timeout Retry ────────────────────────────────────
+
+
+class TestPageFetcherFetchSoupRetry:
+    """Tests for timeout retry logic in PageFetcher.fetch_soup."""
+
+    @pytest.fixture
+    def fetcher(self):
+        """Create a PageFetcher with mocked Playwright internals."""
+        with patch("fbcm.draft_buzz.BrowserRetryHandler") as mock_handler_cls:
+            mock_pw = MagicMock()
+            mock_browser = MagicMock()
+            mock_pw.firefox.launch.return_value = mock_browser
+
+            handler_instance = MagicMock()
+            handler_instance.max_retries = 3
+            handler_instance.retry_delay = 0.0
+            mock_handler_cls.return_value = handler_instance
+
+            fetcher = PageFetcher(playwright=mock_pw, headless=True)
+            fetcher.browser = mock_browser
+            yield fetcher
+
+    def test_succeeds_after_transient_timeout(self, fetcher):
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        mock_page = MagicMock()
+        fetcher.browser.new_page.return_value = mock_page
+
+        mock_page.goto.side_effect = [
+            PlaywrightTimeout("Timeout 30000ms exceeded"),
+            None,
+        ]
+        mock_page.content.return_value = "<html><body>OK</body></html>"
+
+        result = fetcher.fetch_soup("https://example.com")
+
+        assert isinstance(result, BeautifulSoup)
+        assert result.body.string == "OK"
+        assert mock_page.goto.call_count == 2
+        assert mock_page.close.call_count == 2
+
+    def test_raises_after_all_retries_exhausted(self, fetcher):
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        mock_page = MagicMock()
+        fetcher.browser.new_page.return_value = mock_page
+        mock_page.goto.side_effect = PlaywrightTimeout("Timeout 30000ms exceeded")
+
+        with pytest.raises(PlaywrightTimeout):
+            fetcher.fetch_soup("https://example.com")
+
+        assert mock_page.goto.call_count == 3
+        assert mock_page.close.call_count == 3
+
+    def test_non_timeout_error_raises_immediately(self, fetcher):
+        from playwright.sync_api import Error as PlaywrightError
+
+        mock_page = MagicMock()
+        fetcher.browser.new_page.return_value = mock_page
+        mock_page.goto.side_effect = PlaywrightError("net::ERR_NAME_NOT_RESOLVED")
+
+        with pytest.raises(PlaywrightError, match="ERR_NAME_NOT_RESOLVED"):
+            fetcher.fetch_soup("https://example.com")
+
+        assert mock_page.goto.call_count == 1
+        assert mock_page.close.call_count == 1
+
+    def test_logs_warning_on_each_retry(self, fetcher, caplog):
+        import logging
+
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        mock_page = MagicMock()
+        fetcher.browser.new_page.return_value = mock_page
+        mock_page.goto.side_effect = PlaywrightTimeout("Timeout 30000ms exceeded")
+
+        with caplog.at_level(logging.WARNING), pytest.raises(PlaywrightTimeout):
+            fetcher.fetch_soup("https://example.com/page")
+
+        timeout_warnings = [
+            r for r in caplog.records if "Timeout navigating to" in r.message
+        ]
+        assert len(timeout_warnings) == 3
+        assert "attempt 1/3" in timeout_warnings[0].message
+        assert "attempt 2/3" in timeout_warnings[1].message
+        assert "attempt 3/3" in timeout_warnings[2].message
+        assert "https://example.com/page" in timeout_warnings[0].message
+
+
 # ─── ProspectParser ──────────────────────────────────────────────────────────
 
 
