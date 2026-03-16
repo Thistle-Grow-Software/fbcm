@@ -354,7 +354,6 @@ def extract_draft_profiles(
     position: str,
     input_file: str,
 ) -> None:
-    from playwright._impl._errors import TimeoutError
     from playwright.sync_api import sync_playwright
 
     from .draft_buzz import DraftBuzzScraper
@@ -406,7 +405,7 @@ def extract_draft_profiles(
 
                     completed_profiles.append(prof_slug)
 
-                except TimeoutError:
+                except Exception:
                     dump_currently_completed(
                         position=pos,
                         data=position_player_data,
@@ -492,7 +491,7 @@ def update_draft_prospect_urls(ctx: click.Context) -> None:
     with sync_playwright() as playwright:
         pple = ProspectProfileListExtractor(playwright=playwright)
 
-        for position in ["DB"]:
+        for position in POSITIONS:
             try:
                 profile_lists[position] = pple.extract_prospect_urls_for_position(
                     pos=position
@@ -503,7 +502,8 @@ def update_draft_prospect_urls(ctx: click.Context) -> None:
                 )
                 time.sleep(5)
 
-    with open("prospect_urls_db.json", "w") as outfile:
+    # TODO: Make this a setting/argument with prospect_urls.json as a default
+    with open("prospect_urls.json", "w") as outfile:
         json.dump(profile_lists, outfile, indent=4)
 
 
