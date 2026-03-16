@@ -87,13 +87,27 @@ class PageFetcher:
 
     def fetch_soup(self, url: str) -> BeautifulSoup:
         self._ensure_browser_connected()
-        page = self.browser.new_page()
-        try:
-            logger.info(f"Navigating to: {url}")
-            page.goto(url=url)
-            return BeautifulSoup(page.content(), "lxml")
-        finally:
-            page.close()
+        max_retries = self._retry_handler.max_retries
+        last_error: PlaywrightTimeout | None = None
+
+        for attempt in range(max_retries):
+            page = self.browser.new_page()
+            try:
+                logger.info(f"Navigating to: {url}")
+                page.goto(url=url)
+                return BeautifulSoup(page.content(), "lxml")
+            except PlaywrightTimeout as e:
+                last_error = e
+                logger.warning(
+                    f"Timeout navigating to {url} "
+                    f"(attempt {attempt + 1}/{max_retries}), retrying..."
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(self._retry_handler.retry_delay)
+            finally:
+                page.close()
+
+        raise last_error  # type: ignore[misc]
 
     def _fetch_with_page(
         self, url: str, attempt_image_fetch: bool
@@ -326,6 +340,7 @@ class DraftBuzzScraper:
         file_name = f"{self.current_prospect_data.basic_info.full_name}.png"
 
         output_path = Path(self.profile_root_dir, "player_photos", file_name)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(response.content)
         logger.info(f"Wrote image to disk at {output_path}")
 

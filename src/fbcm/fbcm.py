@@ -354,7 +354,6 @@ def extract_draft_profiles(
     position: str,
     input_file: str,
 ) -> None:
-    from playwright._impl._errors import TimeoutError
     from playwright.sync_api import sync_playwright
 
     from .draft_buzz import DraftBuzzScraper
@@ -374,8 +373,9 @@ def extract_draft_profiles(
         )
 
         completed_profiles = []
-        with open("input_files/completed.json") as infile:
-            completed_profiles = json.load(infile)
+        comp_prof_file = Path("input_files/completed.json")
+        if comp_prof_file.exists():
+            completed_profiles = json.loads(comp_prof_file.read_text())
 
         click.echo(f"Loaded {len(completed_profiles)} completed profiles.")
 
@@ -405,7 +405,7 @@ def extract_draft_profiles(
 
                     completed_profiles.append(prof_slug)
 
-                except TimeoutError:
+                except Exception:
                     dump_currently_completed(
                         position=pos,
                         data=position_player_data,
@@ -502,6 +502,7 @@ def update_draft_prospect_urls(ctx: click.Context) -> None:
                 )
                 time.sleep(5)
 
+    # TODO: Make this a setting/argument with prospect_urls.json as a default
     with open("prospect_urls.json", "w") as outfile:
         json.dump(profile_lists, outfile, indent=4)
 
@@ -511,6 +512,7 @@ def dump_currently_completed(position: str, data: dict, completed_list: list) ->
     suffix = f"{rn.hour}_{rn.minute}_{rn.second}"
     fname = f"{position}_redo_{suffix}.json"
 
+    # TODO: Implement robust path/filename handling throughout the app
     with open(f"output_data/{fname}", "w") as outfile:
         json.dump(data, outfile, indent=4)
 
