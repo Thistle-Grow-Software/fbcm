@@ -189,6 +189,7 @@ POSITION_TO_GROUP_MAP = {
     "S": "DB",
     "FS": "DB",
     "SS": "DB",
+    "DB": "DB",
 }
 
 
