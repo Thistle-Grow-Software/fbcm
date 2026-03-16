@@ -15,4 +15,4 @@ jobs:
       aws-role-arn: ${{ secrets.AWS_ROLE_ARN }}
       codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
       codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
-      codeartifact-repo: ${{ secrets.CODEARTIFACT_REPO }}
+      codeartifact-repo: ${{ secrets.CODEARTIFACT_REPOSITORY }}
