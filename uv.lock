@@ -132,7 +132,7 @@ wheels = [
 
 [[package]]
 name = "fbcm"
-version = "0.3.1"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -162,7 +162,7 @@ dev = [
 requires-dist = [
     { name = "click", specifier = "==8.3.1" },
     { name = "ffmpeg-python", specifier = "==0.2.0" },
-    { name = "griddy", extras = ["browser-auth"], specifier = ">=0.46.0,<1.0", index = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/" },
+    { name = "griddy", extras = ["browser-auth"], specifier = ">=0.46.1,<1.0", index = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/" },
     { name = "mutagen", specifier = "==1.47.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15" },
     { name = "pillow", specifier = "==12.1.0" },
@@ -228,7 +228,7 @@ wheels = [
 
 [[package]]
 name = "griddy"
-version = "0.46.0"
+version = "0.46.1"
 source = { registry = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -238,9 +238,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/griddy/0.46.0/griddy-0.46.0.tar.gz", hash = "sha256:57c0f0178e896881b8faf128d64b1e818bac98e4aa051bcfce4e31ad4427feeb" }
+sdist = { url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/griddy/0.46.1/griddy-0.46.1.tar.gz", hash = "sha256:069c858f13a33a866b67faeb5e962c689b5e6445ae43c4d48eda10dabedadfcd" }
 wheels = [
-    { url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/griddy/0.46.0/griddy-0.46.0-py3-none-any.whl", hash = "sha256:366fe54b8c243d22d6c1c09a1c437aa4a3fbbc342533db78e363c420d87ef33d" },
+    { url = "https://thistle-grow-685711685350.d.codeartifact.us-east-1.amazonaws.com/pypi/griddy/simple/griddy/0.46.1/griddy-0.46.1-py3-none-any.whl", hash = "sha256:40630c3e6aadf0c6991656a38ff5f7e951e150812f88966368ec91fc8a1359cf" },
 ]
 
 [package.optional-dependencies]

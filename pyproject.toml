@@ -1,6 +1,6 @@
 [project]
 name = "fbcm"
-version = "0.3.1"
+version = "0.4.0"
 description = "Command line tools for downloading and archiving (American) football content"
 authors = [
     {name = "John Griebel", email = "john@thistlegrow.com"}
@@ -13,7 +13,7 @@ dependencies = [
     "ffmpeg-python==0.2.0",
     "mutagen==1.47.0",
     "pycryptodomex==3.23.0",
-    "griddy[browser-auth]>=0.46.0,<1.0",
+    "griddy[browser-auth]>=0.46.1,<1.0",
     "pyyaml>=6.0",
     "python-docx==1.2.0",
     "Pillow==12.1.0",

@@ -823,8 +823,12 @@ class WordDocGenerator:
         run.font.color.rgb = RGBColor(0x1D, 0x6A, 0x4D)
 
         scouting = self.prospect.scouting_report
-        strengths = (scouting.strengths or []) if scouting else []
-        weaknesses = (scouting.weaknesses or []) if scouting else []
+        strengths = []
+        weaknesses = []
+
+        if scouting:
+            strengths = scouting.strengths or []
+            weaknesses = scouting.weaknesses or []
 
         for strength in strengths:
             p = str_cell.add_paragraph()
