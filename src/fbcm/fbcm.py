@@ -518,12 +518,24 @@ def update_draft_prospect_urls(ctx: click.Context, year: int) -> None:
         click.echo(f"Fetching prospect URLs for {position}...")
         position_hrefs: list[str] = []
 
-        rankings = draftbuzz.rankings.get_position_rankings(
-            position=position, year=year
-        )
-        page_count = rankings.total_pages
+        try:
+            rankings = draftbuzz.rankings.get_position_rankings(
+                position=position, year=year
+            )
+        except Exception as e:
+            logger.exception(
+                f"Position {position} page 1 failed: {e}. Moving on to next position."
+            )
+            profile_lists[position] = position_hrefs
+            continue
 
-        for page_num in range(2, page_count):
+        page_count = rankings.total_pages or 1
+
+        for entry in rankings.entries:
+            if entry.href:
+                position_hrefs.append(entry.href)
+
+        for page_num in range(2, page_count + 1):
             try:
                 rankings = draftbuzz.rankings.get_position_rankings(
                     position=position, page=page_num, year=year

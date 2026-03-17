@@ -273,25 +273,41 @@ class TestExtractDraftProfiles:
 
 
 class TestUpdateDraftProspectUrls:
+    def _single_page(self, **kwargs):
+        """PositionRankings with total_pages=1 (no further pages)."""
+        defaults = dict(position="QB", year=2026, page=1, total_pages=1, entries=[])
+        defaults.update(kwargs)
+        return PositionRankings(**defaults)
+
     def test_paginates_through_rankings(self, runner):
         page1 = PositionRankings(
             position="QB",
             year=2026,
             page=1,
+            total_pages=2,
             entries=[
                 RankedProspect(name="Player 1", href="/players/player-1-qb-2026"),
+            ],
+        )
+        page2 = PositionRankings(
+            position="QB",
+            year=2026,
+            page=2,
+            total_pages=2,
+            entries=[
                 RankedProspect(name="Player 2", href="/players/player-2-qb-2026"),
             ],
         )
-        page_empty = PositionRankings(entries=[])
+        empty = self._single_page()
 
         with runner.isolated_filesystem():
             with patch("griddy.draftbuzz.GriddyDraftBuzz") as mock_sdk_cls:
                 mock_sdk = mock_sdk_cls.return_value
+                # QB: page1 then page2; remaining 8 positions: single empty page each
                 mock_sdk.rankings.get_position_rankings.side_effect = [
                     page1,
-                    page_empty,
-                ] + [page_empty] * 8
+                    page2,
+                ] + [empty] * 8
 
                 result = runner.invoke(
                     cli,
@@ -302,8 +318,9 @@ class TestUpdateDraftProspectUrls:
             urls = json.loads(Path("prospect_urls.json").read_text())
             assert len(urls["QB"]) == 2
             assert urls["QB"][0] == "/players/player-1-qb-2026"
+            assert urls["QB"][1] == "/players/player-2-qb-2026"
 
-    def test_handles_exception_per_position(self, runner):
+    def test_handles_exception_on_first_page(self, runner):
         with runner.isolated_filesystem():
             with patch("griddy.draftbuzz.GriddyDraftBuzz") as mock_sdk_cls:
                 mock_sdk = mock_sdk_cls.return_value
@@ -323,21 +340,21 @@ class TestUpdateDraftProspectUrls:
             position="QB",
             year=2026,
             page=1,
+            total_pages=1,
             entries=[
                 RankedProspect(name="Player 1", href="/players/p1"),
                 RankedProspect(name="Player 2", href=None),
                 RankedProspect(name="Player 3", href="/players/p3"),
             ],
         )
-        page_empty = PositionRankings(entries=[])
+        empty = self._single_page()
 
         with runner.isolated_filesystem():
             with patch("griddy.draftbuzz.GriddyDraftBuzz") as mock_sdk_cls:
                 mock_sdk = mock_sdk_cls.return_value
-                mock_sdk.rankings.get_position_rankings.side_effect = [
-                    page,
-                    page_empty,
-                ] + [page_empty] * 8
+                mock_sdk.rankings.get_position_rankings.side_effect = [page] + [
+                    empty
+                ] * 8
 
                 result = runner.invoke(
                     cli,
@@ -351,7 +368,7 @@ class TestUpdateDraftProspectUrls:
             assert "/players/p3" in urls["QB"]
 
     def test_custom_year_argument(self, runner):
-        page_empty = PositionRankings(entries=[])
+        page_empty = self._single_page()
 
         with runner.isolated_filesystem():
             with patch("griddy.draftbuzz.GriddyDraftBuzz") as mock_sdk_cls:
