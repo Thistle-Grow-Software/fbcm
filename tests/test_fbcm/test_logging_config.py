@@ -90,7 +90,7 @@ class TestSetupLoggingWithConfig:
         fbcm_logger.handlers.clear()
         fbcm_logger.setLevel(logging.WARNING)
         # Clean up any module-level loggers we set
-        for name in ["fbcm.nfl", "fbcm.draft_buzz", "fbcm.file_operations"]:
+        for name in ["fbcm.nfl", "fbcm.metadata", "fbcm.file_operations"]:
             mod_logger = logging.getLogger(name)
             mod_logger.setLevel(logging.NOTSET)
 
@@ -168,15 +168,15 @@ class TestSetupLoggingWithConfig:
     def test_config_module_levels(self):
         cfg = LoggingConfig(
             level="INFO",
-            module_levels={"nfl": "DEBUG", "draft_buzz": "WARNING"},
+            module_levels={"nfl": "DEBUG", "metadata": "WARNING"},
         )
         setup_logging(logging_config=cfg)
 
         nfl_logger = logging.getLogger("fbcm.nfl")
-        draft_buzz_logger = logging.getLogger("fbcm.draft_buzz")
+        metadata_logger = logging.getLogger("fbcm.metadata")
 
         assert nfl_logger.level == logging.DEBUG
-        assert draft_buzz_logger.level == logging.WARNING
+        assert metadata_logger.level == logging.WARNING
 
     def test_config_module_levels_with_fbcm_prefix(self):
         cfg = LoggingConfig(

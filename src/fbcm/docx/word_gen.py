@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+from pathlib import Path
 from typing import Any
 
 from docx import Document
@@ -10,10 +11,11 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
+from griddy.draftbuzz.models import ProspectProfile, RatingsAndRankings
 from PIL import Image, ImageDraw, ImageFont
 
-from ..constants import POSITION_STATS, RATING_FONT
-from ..models import ColorScheme, ProspectDataSoup
+from ..constants import PHOTO_BASE_DIR, POSITION_STATS, RATING_FONT
+from ..models import ColorScheme
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,23 @@ def get_primary_position(position: str) -> str:
     if not position:
         return ""
     return position.split("/")[0].strip().upper()
+
+
+def get_photo_path(full_name: str) -> Path:
+    """Build the local photo path for a prospect."""
+    return Path(PHOTO_BASE_DIR, f"{full_name}.png")
+
+
+def get_recruiting_str(ratings: RatingsAndRankings) -> str:
+    """Build a formatted string of recruiting outlet ratings."""
+    outlet_rtgs = []
+    if ratings.espn:
+        outlet_rtgs.append(f"ESPN: {int(ratings.espn)}")
+    if ratings.rtg_247:
+        outlet_rtgs.append(f"247: {int(ratings.rtg_247)}")
+    if ratings.rivals:
+        outlet_rtgs.append(f"Rivals: {ratings.rivals}")
+    return "  \u2022  ".join(outlet_rtgs)
 
 
 class SchoolColors:
@@ -250,7 +269,7 @@ def add_left_border(cell: Any, hex_color: str, size: int = 24) -> None:
 def skill_bar(pct: int) -> str:
     """Generate ASCII skill bar."""
     filled = round(pct / 10)
-    return "█" * filled + "░" * (10 - filled)
+    return "\u2588" * filled + "\u2591" * (10 - filled)
 
 
 class WordDocGenerator:
@@ -259,7 +278,7 @@ class WordDocGenerator:
         output_path: str,
         ring_image_base_dir: str,
         colors_path: str,
-        prospect: ProspectDataSoup | None = None,
+        prospect: ProspectProfile | None = None,
     ):
         self.output_path = output_path
         self.ring_img_base_dir = ring_image_base_dir
@@ -273,7 +292,7 @@ class WordDocGenerator:
         if prospect:
             self.add_prospect(prospect)
 
-    def add_prospect(self, prospect: ProspectDataSoup) -> None:
+    def add_prospect(self, prospect: ProspectProfile) -> None:
         """Add a prospect profile to the document. The profile is rendered immediately."""
         if self._prospect_count > 0:
             self.document.add_page_break()
@@ -282,10 +301,12 @@ class WordDocGenerator:
         self._prospect_count += 1
         self._last_prospect_name = prospect.basic_info.full_name
 
-    def _set_prospect_context(self, prospect: ProspectDataSoup) -> None:
+    def _set_prospect_context(self, prospect: ProspectProfile) -> None:
         """Set the active prospect and derive school colors for section generation."""
         self.prospect = prospect
         self.colors = self.color_handler.get_school_colors(prospect.basic_info.college)
+        # SDK returns list[Stats] (multiple seasons); use the first (most recent) for display
+        self._active_stats = prospect.stats[0] if prospect.stats else None
 
     def _set_margins(self) -> None:
         section = self.document.sections[0]
@@ -396,9 +417,8 @@ class WordDocGenerator:
         photo_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
         photo_para = photo_cell.paragraphs[0]
-        photo_para.add_run().add_picture(
-            str(self.prospect.basic_info.photo_path), width=Inches(1.3)
-        )
+        photo_path = get_photo_path(self.prospect.basic_info.full_name)
+        photo_para.add_run().add_picture(str(photo_path), width=Inches(1.3))
 
         name_cell = header_table.cell(0, 1)
         name_cell.width = Inches(4.0)
@@ -416,8 +436,8 @@ class WordDocGenerator:
         info_para.paragraph_format.space_before = Pt(2)
         info_para.paragraph_format.space_after = Pt(4)
         run = info_para.add_run(
-            f"{self.prospect.basic_info.position}  •  "
-            f"{self.prospect.basic_info.college.title()}  •  "
+            f"{self.prospect.basic_info.position}  \u2022  "
+            f"{self.prospect.basic_info.college.title()}  \u2022  "
             f"{self.prospect.basic_info.play_style}"
         )
         run.font.size = Pt(11)
@@ -425,10 +445,10 @@ class WordDocGenerator:
 
         measurables_para = name_cell.add_paragraph()
         run = measurables_para.add_run(
-            f"{self.prospect.basic_info.height}  •  "
-            f"{self.prospect.basic_info.weight} lbs  •  "
-            f"{self.prospect.basic_info.forty}s  •  "
-            f"{self.prospect.basic_info.hometown.title()}  •  "
+            f"{self.prospect.basic_info.height}  \u2022  "
+            f"{self.prospect.basic_info.weight} lbs  \u2022  "
+            f"{self.prospect.basic_info.forty}s  \u2022  "
+            f"{self.prospect.basic_info.hometown.title()}  \u2022  "
             f"{self.prospect.basic_info.class_.title()}"
         )
         run.font.size = Pt(9)
@@ -527,8 +547,8 @@ class WordDocGenerator:
 
     def _get_stat_value(self, category: str, stat_label: str) -> str:
         """Get a stat value from the appropriate nested stats object."""
-        if not self.prospect.stats:
-            return "—"
+        if not self._active_stats:
+            return "\u2014"
 
         # Map category names to attribute names
         category_to_attr = {
@@ -552,16 +572,16 @@ class WordDocGenerator:
 
         if attr_name is None:
             # Flat structure (e.g., PassingStats for QB)
-            value = getattr(self.prospect.stats, stat_attr, None)
+            value = getattr(self._active_stats, stat_attr, None)
         else:
             # Nested structure (e.g., OffenseSkillPlayerStats.rushing)
-            nested_stats = getattr(self.prospect.stats, attr_name, None)
+            nested_stats = getattr(self._active_stats, attr_name, None)
             if nested_stats is None:
-                return "—"
+                return "\u2014"
             value = getattr(nested_stats, stat_attr, None)
 
         if value is None:
-            return "—"
+            return "\u2014"
         return str(value)
 
     def _gen_stats_bar(self) -> None:
@@ -692,9 +712,9 @@ class WordDocGenerator:
         run.font.bold = True
         run.font.color.rgb = self.colors.primary_rgb
 
-        # TODO: Skills, comparisons, and recruiting should probably all be distinct methods
-
-        for skill_name, skill_pct in self.prospect.skills.to_dict().items():
+        for skill_name, skill_pct in self.prospect.skills.model_dump(
+            exclude_none=True
+        ).items():
             if skill_pct is None:
                 continue
             p = skills_cell.add_paragraph()
@@ -732,10 +752,9 @@ class WordDocGenerator:
         run.font.bold = True
         run.font.color.rgb = self.colors.primary_rgb
 
-        if self.prospect.comparisons is None:
-            self.prospect.comparisons = []
+        comparisons = self.prospect.comparisons or []
 
-        for comp in self.prospect.comparisons:
+        for comp in comparisons:
             p = comp_cell.add_paragraph()
             p.paragraph_format.space_after = Pt(2)
 
@@ -763,14 +782,15 @@ class WordDocGenerator:
 
             p = comp_cell.add_paragraph()
 
-            run = p.add_run(self.prospect.ratings.get_recruiting_str())
+            run = p.add_run(get_recruiting_str(self.prospect.ratings))
             run.font.size = Pt(10)
             run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
 
         self.document.add_paragraph().paragraph_format.space_after = Pt(4)
 
     def _gen_bio(self) -> None:
-        if self.prospect.scouting_report.bio:
+        scouting = self.prospect.scouting_report
+        if scouting and scouting.bio:
             header = self.document.add_paragraph()
             header.paragraph_format.space_after = Pt(4)
             run = header.add_run("BACKGROUND")
@@ -778,9 +798,7 @@ class WordDocGenerator:
             run.font.bold = True
             run.font.color.rgb = self.colors.primary_rgb
 
-            bio_text = self.prospect.scouting_report.bio.replace(
-                "Draft Profile: Bio", ""
-            ).strip()
+            bio_text = scouting.bio.replace("Draft Profile: Bio", "").strip()
 
             p = self.document.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
@@ -788,7 +806,6 @@ class WordDocGenerator:
             run = p.add_run(bio_text)
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
-        # self.document.add_paragraph().paragraph_format.space_after = Pt(4)
 
     def _gen_strengths_weaknesses(self) -> None:
         sw_table = self.document.add_table(rows=1, cols=2)
@@ -805,7 +822,11 @@ class WordDocGenerator:
         run.font.bold = True
         run.font.color.rgb = RGBColor(0x1D, 0x6A, 0x4D)
 
-        for strength in self.prospect.scouting_report.strengths:
+        scouting = self.prospect.scouting_report
+        strengths = (scouting.strengths if scouting else None) or []
+        weaknesses = (scouting.weaknesses if scouting else None) or []
+
+        for strength in strengths:
             p = str_cell.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             p.paragraph_format.space_after = Pt(4)
@@ -831,13 +852,13 @@ class WordDocGenerator:
         run.font.bold = True
         run.font.color.rgb = RGBColor(0xA6, 0x5D, 0x21)
 
-        for weakness in self.prospect.scouting_report.weaknesses:
+        for weakness in weaknesses:
             p = weak_cell.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             p.paragraph_format.space_after = Pt(4)
             p.paragraph_format.left_indent = Inches(0.15)
 
-            run = p.add_run("– ")
+            run = p.add_run("\u2013 ")
             run.font.bold = True
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0xA6, 0x5D, 0x21)
@@ -847,7 +868,8 @@ class WordDocGenerator:
             run.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
 
     def _gen_scouting_summary(self) -> None:
-        if self.prospect.scouting_report.summary:
+        scouting = self.prospect.scouting_report
+        if scouting and scouting.summary:
             self.document.add_paragraph().paragraph_format.space_after = Pt(4)
 
             summary_table = self.document.add_table(rows=1, cols=1)
@@ -868,11 +890,7 @@ class WordDocGenerator:
 
             p = cell.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            run = p.add_run(
-                self.prospect.scouting_report.summary.replace(
-                    "Scouting Report: Summary", ""
-                )
-            )
+            run = p.add_run(scouting.summary.replace("Scouting Report: Summary", ""))
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
 

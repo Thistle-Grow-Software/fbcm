@@ -1,8 +1,16 @@
 """Tests for pure helper functions in fbcm.docx.word_gen."""
 
-import pytest
+from pathlib import Path
 
-from fbcm.docx.word_gen import get_primary_position, skill_bar
+import pytest
+from griddy.draftbuzz.models import RatingsAndRankings
+
+from fbcm.docx.word_gen import (
+    get_photo_path,
+    get_primary_position,
+    get_recruiting_str,
+    skill_bar,
+)
 
 
 class TestGetPrimaryPosition:
@@ -121,3 +129,33 @@ class TestSchoolColors:
 
     def test_normalize_flattens_divisions(self, school_colors):
         assert "miami" in school_colors.color_data
+
+
+class TestGetPhotoPath:
+    def test_returns_path_with_name(self):
+        result = get_photo_path("Cam Ward")
+        assert isinstance(result, Path)
+        assert result.name == "Cam Ward.png"
+
+    def test_includes_photo_base_dir(self):
+        result = get_photo_path("Test Player")
+        assert str(result).endswith("Test Player.png")
+
+
+class TestGetRecruitingStr:
+    def test_all_outlets(self):
+        ratings = RatingsAndRankings(espn=95.0, rtg_247=99.0, rivals=5.8)
+        result = get_recruiting_str(ratings)
+        assert "ESPN: 95" in result
+        assert "247: 99" in result
+        assert "Rivals: 5.8" in result
+        assert "\u2022" in result
+
+    def test_partial_outlets(self):
+        ratings = RatingsAndRankings(espn=95.0)
+        result = get_recruiting_str(ratings)
+        assert result == "ESPN: 95"
+
+    def test_no_outlets(self):
+        ratings = RatingsAndRankings()
+        assert get_recruiting_str(ratings) == ""
