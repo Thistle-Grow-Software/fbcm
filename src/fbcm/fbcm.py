@@ -514,12 +514,13 @@ def update_draft_prospect_urls(ctx: click.Context, year: int) -> None:
     draftbuzz = GriddyDraftBuzz()
     profile_lists: dict[str, list[str]] = {}
 
+    max_pages = 20  # DraftBuzz positions rarely exceed ~10 pages
+
     for position in POSITIONS:
         click.echo(f"Fetching prospect URLs for {position}...")
         position_hrefs: list[str] = []
-        page_num = 1
 
-        while True:
+        for page_num in range(1, max_pages + 1):
             try:
                 rankings = draftbuzz.rankings.get_position_rankings(
                     position=position, page=page_num, year=year
@@ -537,8 +538,6 @@ def update_draft_prospect_urls(ctx: click.Context, year: int) -> None:
             for entry in rankings.entries:
                 if entry.href:
                     position_hrefs.append(entry.href)
-
-            page_num += 1
 
         profile_lists[position] = position_hrefs
         click.echo(f"  Found {len(position_hrefs)} {position} prospects.")
