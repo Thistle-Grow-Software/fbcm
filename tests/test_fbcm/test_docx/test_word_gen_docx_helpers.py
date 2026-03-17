@@ -5,6 +5,15 @@ import json
 import pytest
 from docx import Document
 from docx.oxml.ns import qn
+from griddy.draftbuzz.models import (
+    DefenseStats,
+    InterceptionStats,
+    OffenseSkillPlayerStats,
+    PassingStats,
+    ReceivingStats,
+    RushingStats,
+    TackleStats,
+)
 
 from fbcm.docx.word_gen import (
     WordDocGenerator,
@@ -12,17 +21,6 @@ from fbcm.docx.word_gen import (
     remove_cell_borders,
     set_cell_margins,
     set_cell_shading,
-)
-from fbcm.models import (
-    BasicInfo,
-    DefenseStats,
-    InterceptionStats,
-    OffenseSkillPlayerStats,
-    PassingStats,
-    ProspectDataSoup,
-    ReceivingStats,
-    RushingStats,
-    TackleStats,
 )
 
 
@@ -180,70 +178,47 @@ class TestWordDocGeneratorGetStatValue:
         return gen
 
     def test_returns_dash_when_no_stats(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="QB"), stats=None
-        )
+        generator._active_stats = None
         assert generator._get_stat_value("Passing", "CMP") == "\u2014"
 
     def test_flat_stats_passing(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="QB"),
-            stats=PassingStats(cmp=280, att=420, yds=3800, td=32),
-        )
+        generator._active_stats = PassingStats(cmp=280, att=420, yds=3800, td=32)
         assert generator._get_stat_value("Passing", "CMP") == "280"
         assert generator._get_stat_value("Passing", "ATT") == "420"
         assert generator._get_stat_value("Passing", "TD") == "32"
 
     def test_nested_stats_rushing(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="RB"),
-            stats=OffenseSkillPlayerStats(
-                rushing=RushingStats(att=200, yds=1200, td=14),
-                receiving=ReceivingStats(rec=30, yds=250),
-            ),
+        generator._active_stats = OffenseSkillPlayerStats(
+            rushing=RushingStats(att=200, yds=1200, td=14),
+            receiving=ReceivingStats(rec=30, yds=250),
         )
         assert generator._get_stat_value("Rushing", "ATT") == "200"
         assert generator._get_stat_value("Rushing", "YDS") == "1200"
         assert generator._get_stat_value("Receiving", "REC") == "30"
 
     def test_nested_stats_defense(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="DL"),
-            stats=DefenseStats(
-                tackle=TackleStats(total=65, solo=42, sacks=8.5),
-                interception=InterceptionStats(ints=2, pds=10),
-            ),
+        generator._active_stats = DefenseStats(
+            tackle=TackleStats(total=65, solo=42, sacks=8.5),
+            interception=InterceptionStats(ints=2, pds=10),
         )
         assert generator._get_stat_value("Tackles", "TOTAL") == "65"
         assert generator._get_stat_value("Interceptions", "INTS") == "2"
 
     def test_returns_dash_for_missing_nested_category(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="RB"),
-            stats=OffenseSkillPlayerStats(rushing=None, receiving=None),
-        )
+        generator._active_stats = OffenseSkillPlayerStats(rushing=None, receiving=None)
         assert generator._get_stat_value("Rushing", "ATT") == "\u2014"
 
     def test_int_maps_to_ints(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="QB"),
-            stats=PassingStats(ints=8),
-        )
+        generator._active_stats = PassingStats(ints=8)
         assert generator._get_stat_value("Passing", "INT") == "8"
 
     def test_rtg_maps_to_qb_rtg(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="QB"),
-            stats=PassingStats(qb_rtg=155.2),
-        )
+        generator._active_stats = PassingStats(qb_rtg=155.2)
         assert generator._get_stat_value("Passing", "RTG") == "155.2"
 
     def test_tds_maps_to_td(self, generator):
-        generator.prospect = ProspectDataSoup(
-            basic_info=BasicInfo(position="DL"),
-            stats=DefenseStats(
-                interception=InterceptionStats(td=3),
-            ),
+        generator._active_stats = DefenseStats(
+            interception=InterceptionStats(td=3),
         )
         assert generator._get_stat_value("Interceptions", "TDS") == "3"
 

@@ -155,44 +155,6 @@ POSITION_STATS = {
 }
 
 
-POSITION_TO_GROUP_MAP = {
-    "QB": "QB",
-    "HB": "RB",
-    "FB": "RB",
-    "RB": "RB",
-    "WR": "WR",
-    "TE": "TE",
-    "OT": "OL",
-    "LT": "OL",
-    "RT": "OL",
-    "OG": "OL",
-    "LG": "OL",
-    "RG": "OL",
-    "C": "OL",
-    "DL": "DL",
-    "DT": "DL",
-    "NT": "DL",
-    "NG": "DL",
-    "EDGE": "EDGE",
-    "LE": "EDGE",
-    "RE": "EDGE",
-    "DE": "EDGE",
-    "LB": "LB",
-    "LOLB": "LB",
-    "ROLB": "LB",
-    "OLB": "LB",
-    "MLB": "LB",
-    "ILB": "LB",
-    "CB": "DB",
-    "LCB": "CB",
-    "RCB": "CB",
-    "S": "DB",
-    "FS": "DB",
-    "SS": "DB",
-    "DB": "DB",
-}
-
-
 # NFL.com specific
 DEFAULT_REPLAY_TYPES = {
     "full_game": "Full Game",

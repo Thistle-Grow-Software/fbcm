@@ -1,11 +1,8 @@
 import json
 import logging
 import os
-import random
-import time
 from datetime import datetime
 from pathlib import Path
-from random import uniform
 
 import click
 
@@ -16,7 +13,6 @@ from .config import (
     NFLGamesConfig,
     NFLShowConfig,
 )
-from .constants import POSITION_GROUP_SLEEP_RANGE, PROFILE_SCRAPE_SLEEP_RANGE
 from .mappings import DEFAULT_REPLAY_TYPES, POSITIONS, TEAM_FULL_NAMES
 from .utils import find_config, load_config
 
@@ -354,9 +350,8 @@ def extract_draft_profiles(
     position: str,
     input_file: str,
 ) -> None:
-    from playwright.sync_api import sync_playwright
-
-    from .draft_buzz import DraftBuzzScraper
+    from griddy.draftbuzz import GriddyDraftBuzz
+    from griddy.draftbuzz.errors import ParsingError
 
     selected_positions = list(position)
     if not selected_positions:
@@ -367,58 +362,83 @@ def extract_draft_profiles(
     with open(input_file) as infile:
         profile_urls = json.load(infile)
 
-    with sync_playwright() as playwright:
-        scraper = DraftBuzzScraper(
-            playwright=playwright, profile_root_dir=Path(output_directory)
+    draftbuzz = GriddyDraftBuzz()
+
+    completed_profiles: list[str] = []
+    comp_prof_file = Path("input_files/completed.json")
+    if comp_prof_file.exists():
+        completed_profiles = json.loads(comp_prof_file.read_text())
+
+    click.echo(f"Loaded {len(completed_profiles)} completed profiles.")
+
+    for pos in selected_positions:
+        if pos not in profile_urls:
+            raise click.BadParameter(f"{pos} is not present in the input file.")
+
+        position_profiles = profile_urls[pos]
+        click.echo(f"Found {len(position_profiles)} {pos} profile URLs to extract.")
+
+        position_player_data: dict[str, dict] = {}
+
+        for prof_slug in position_profiles:
+            if prof_slug in completed_profiles:
+                click.echo(f"Already completed {prof_slug}. Skipping.")
+                continue
+
+            click.echo(f"Processing player profile: {prof_slug}")
+
+            try:
+                player_data = draftbuzz.prospects.get_prospect(
+                    slug=prof_slug.lstrip("/"), position=pos
+                )
+                position_player_data[player_data.basic_info.full_name] = (
+                    player_data.model_dump()
+                )
+
+                # Download player photo to disk
+                if player_data.basic_info.photo_url:
+                    _download_player_photo(
+                        photo_url=player_data.basic_info.photo_url,
+                        full_name=player_data.basic_info.full_name,
+                        output_dir=Path(output_directory),
+                    )
+
+                completed_profiles.append(prof_slug)
+
+            except (ParsingError, ConnectionError, OSError) as e:
+                logger.error(
+                    f"Failed to process {prof_slug}: {e}. Continuing with remaining prospects."
+                )
+                continue
+            except Exception:
+                dump_currently_completed(
+                    position=pos,
+                    data=position_player_data,
+                    completed_list=completed_profiles,
+                )
+                raise
+        dump_currently_completed(
+            position=pos,
+            data=position_player_data,
+            completed_list=completed_profiles,
         )
 
-        completed_profiles = []
-        comp_prof_file = Path("input_files/completed.json")
-        if comp_prof_file.exists():
-            completed_profiles = json.loads(comp_prof_file.read_text())
 
-        click.echo(f"Loaded {len(completed_profiles)} completed profiles.")
+def _download_player_photo(photo_url: str, full_name: str, output_dir: Path) -> None:
+    """Download a prospect's photo to disk."""
+    import requests
 
-        for pos in selected_positions:
-            if pos not in profile_urls:
-                raise click.BadParameter(f"{pos} is not present in the input file.")
+    logger.info(f"Saving photo for {full_name}")
+    logger.info(f"Fetching image from {photo_url}")
 
-            position_profiles = profile_urls[pos]
-            click.echo(f"Found {len(position_profiles)} {pos} profile URLs to extract.")
+    response = requests.get(photo_url)
+    response.raise_for_status()
 
-            position_player_data = {}
-
-            for prof_slug in position_profiles:
-                if prof_slug in completed_profiles:
-                    click.echo(f"Already completed {prof_slug}. Skipping.")
-                    continue
-
-                click.echo(f"Processing player profile: {prof_slug}")
-                time.sleep(uniform(*PROFILE_SCRAPE_SLEEP_RANGE))
-
-                try:
-                    player_data = scraper.scrape_from_url(url=prof_slug, position=pos)
-                    position_player_data[player_data.basic_info.full_name] = (
-                        player_data.to_dict()
-                    )
-                    scraper.save_player_photo_to_disk()
-
-                    completed_profiles.append(prof_slug)
-
-                except Exception:
-                    dump_currently_completed(
-                        position=pos,
-                        data=position_player_data,
-                        completed_list=completed_profiles,
-                    )
-                    raise
-            dump_currently_completed(
-                position=pos,
-                data=position_player_data,
-                completed_list=completed_profiles,
-            )
-
-            time.sleep(random.uniform(*POSITION_GROUP_SLEEP_RANGE))
+    file_name = f"{full_name}.png"
+    output_path = Path(output_dir, "player_photos", file_name)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(response.content)
+    logger.info(f"Wrote image to disk at {output_path}")
 
 
 @cli.command()
@@ -440,8 +460,9 @@ def gen_prospect_word_docs(
     output_directory: str,
     position: str,
 ) -> None:
+    from griddy.draftbuzz.models import ProspectProfile
+
     from .docx.word_gen import WordDocGenerator
-    from .models import ProspectDataSoup
 
     selected_positions = list(position)
     if not selected_positions:
@@ -471,7 +492,7 @@ def gen_prospect_word_docs(
                 f"Generating profile for {prospect_name}, #{cur_count} of {len(position_data)}"
             )
 
-            prospect = ProspectDataSoup.from_dict(data=data)
+            prospect = ProspectProfile.model_validate(data)
             wdg.add_prospect(prospect=prospect)
 
             wdg.generate_complete_document()
@@ -480,27 +501,58 @@ def gen_prospect_word_docs(
 
 
 @cli.command()
+@click.option(
+    "--year",
+    type=int,
+    default=2026,
+    help="Draft year to fetch prospect URLs for.",
+)
 @click.pass_context
-def update_draft_prospect_urls(ctx: click.Context) -> None:
-    from playwright._impl._errors import TimeoutError
-    from playwright.sync_api import sync_playwright
+def update_draft_prospect_urls(ctx: click.Context, year: int) -> None:
+    from griddy.draftbuzz import GriddyDraftBuzz
 
-    from .draft_buzz import ProspectProfileListExtractor
+    draftbuzz = GriddyDraftBuzz()
+    profile_lists: dict[str, list[str]] = {}
 
-    profile_lists = {}
-    with sync_playwright() as playwright:
-        pple = ProspectProfileListExtractor(playwright=playwright)
+    for position in POSITIONS:
+        click.echo(f"Fetching prospect URLs for {position}...")
+        position_hrefs: list[str] = []
 
-        for position in POSITIONS:
+        try:
+            rankings = draftbuzz.rankings.get_position_rankings(
+                position=position, year=year
+            )
+        except Exception as e:
+            logger.exception(
+                f"Position {position} page 1 failed: {e}. Moving on to next position."
+            )
+            profile_lists[position] = position_hrefs
+            continue
+
+        page_count = rankings.total_pages or 1
+
+        for entry in rankings.entries:
+            if entry.href:
+                position_hrefs.append(entry.href)
+
+        for page_num in range(2, page_count + 1):
             try:
-                profile_lists[position] = pple.extract_prospect_urls_for_position(
-                    pos=position
+                rankings = draftbuzz.rankings.get_position_rankings(
+                    position=position, page=page_num, year=year
                 )
-            except TimeoutError:
-                logger.warning(
-                    f"Position {position} timed out. Sleeping, then moving on to next position."
+            except Exception as e:
+                logger.exception(
+                    f"Position {position} page {page_num} failed: {e}. "
+                    "Moving on to next position."
                 )
-                time.sleep(5)
+                break
+
+            for entry in rankings.entries:
+                if entry.href:
+                    position_hrefs.append(entry.href)
+
+        profile_lists[position] = position_hrefs
+        click.echo(f"  Found {len(position_hrefs)} {position} prospects.")
 
     # TODO: Make this a setting/argument with prospect_urls.json as a default
     with open("prospect_urls.json", "w") as outfile:
@@ -523,8 +575,9 @@ def dump_currently_completed(position: str, data: dict, completed_list: list) ->
 @cli.command()
 @click.pass_context
 def draft_sandbox(ctx: click.Context) -> None:
+    from griddy.draftbuzz.models import ProspectProfile
+
     from .docx.word_gen import WordDocGenerator
-    from .models import ProspectDataSoup
 
     click.echo("Draft profile sandbox...")
 
@@ -532,7 +585,7 @@ def draft_sandbox(ctx: click.Context) -> None:
         qb_data = json.load(infile)
 
     fm_data = qb_data["Fernando Mendoza"]
-    mendoza_obj = ProspectDataSoup.from_dict(fm_data)
+    mendoza_obj = ProspectProfile.model_validate(fm_data)
     wdg = WordDocGenerator(
         prospect=mendoza_obj,
         output_path="output_data",
