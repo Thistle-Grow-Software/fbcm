@@ -1,6 +1,6 @@
 [project]
 name = "fbcm"
-version = "0.4.0"
+version = "0.4.1"
 description = "Command line tools for downloading and archiving (American) football content"
 authors = [
     {name = "John Griebel", email = "john@thistlegrow.com"}
@@ -29,6 +29,12 @@ dev = [
     "types-PyYAML",
     "types-requests",
     "types-beautifulsoup4",
+]
+docs = [
+    "mkdocs>=1.6.0,<2.0",
+    "mkdocs-material>=9.6.0,<10.0",
+    "mkdocstrings[python]>=0.29.0,<1.0",
+    "mike>=2.1.0,<3.0",
 ]
 
 [project.scripts]

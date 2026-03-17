@@ -3,6 +3,7 @@
 # Minimal, repo-local configuration to build docs for the fbcm project.
 
 import sys
+import tomllib
 from datetime import datetime
 from pathlib import Path
 
@@ -15,8 +16,9 @@ if str(SRC) not in sys.path:
 # -- Project information -----------------------------------------------------
 
 project = "fbcm"
-# Keep version in sync with pyproject.toml
-release = "0.0.1"
+# Read version dynamically from pyproject.toml
+with open(ROOT / "pyproject.toml", "rb") as f:
+    release = tomllib.load(f)["project"]["version"]
 copyright = f"{datetime.now().year}, fbcm"
 
 autodoc_default_options = {
