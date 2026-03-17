@@ -8,7 +8,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   quality-gates:
@@ -23,3 +23,8 @@ jobs:
       codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
       codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  release:
+    if: github.ref == 'refs/heads/master'
+    needs: [quality-gates]
+    uses: Thistle-Grow-Software/.github/.github/workflows/create-release.yml@main
